@@ -1,70 +1,67 @@
-# Getting Started with Create React App
+# OKX DEX Swap Application
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project demonstrates how to build a token swap application on the EVM network using the OKX DEX API. The example shows how to swap ETH for USDC on the Ethereum network.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- Check token allowances
+- Approve tokens for swapping
+- Get quotes for token swaps
+- Execute token swaps
 
-### `npm start`
+## Prerequisites
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- Node.js and npm installed
+- An Ethereum wallet with private key
+- [OKX API credentials (API Key, Secret Key, and Passphrase)](https://www.okx.com/web3/build/dev-portal)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Installation
 
-### `npm test`
+1. Fork the repository:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Click "Use Template" to fork this repl.
+  
+2. Install the dependencies
 
-### `npm run build`
+In Replit, open the shell terminal and run the following command:
+```bash
+npm install
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+3. Run the project:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- Use the `Run` button provided by Replit to start the application.
+- Once the server starts, it will provide a webview window with the application running live.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-### `npm run eject`
+4. Set up your environment variables (consider using a `.env` file):
+   - `CHAIN_ID`
+   - `FROM_TOKEN_ADDRESS`
+   - `TO_TOKEN_ADDRESS`
+   - `USER_WALLET_ADDRESS`
+   - `PRIVATE_KEY` (Wallet Private Key)
+   - `OKX_API_KEY`
+   - `OKX_SECRET_KEY`
+   - `OKX_PASSPHRASE`
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Usage
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+1. Set up your environment and initialize Web3 connection.
+2. Check token allowances using the `getAllowance` function.
+3. If needed, approve tokens using the `sendApproveTx` function.
+4. Get a quote for your swap using the `getQuote` function.
+5. Execute the swap using the `sendSwapTx` function.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Important Notes
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+- Always ensure you have sufficient gas for transactions.
+- Be cautious with private keys and API credentials. Never share them publicly.
+- This example uses a 3% slippage tolerance. Adjust as needed.
 
-## Learn More
+## Contributing
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Contributions, issues, and feature requests are welcome. Feel free to check [issues page](https://github.com/julian-dev28/okx-dex-swap/issues) if you want to contribute.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## License
 
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+[MIT](https://choosealicense.com/licenses/mit/)
