@@ -14,7 +14,7 @@ const SwapTransaction = () => {
     const [result, setResult] = useState(null);
     const [txHash, setTxHash] = useState(null);
     const [amount, setAmount] = useState("");
-    const tokenDecimals = 6;
+    const tokenDecimals = 9;
 
     const validateSwapParams = useCallback((amount) => {
         const errors = [];

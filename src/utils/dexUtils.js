@@ -1,12 +1,14 @@
 import Web3 from "web3";
 import cryptoJS from "crypto-js";
 
+const lineaMainnet = "https://linea.blockpi.network/v1/rpc/public";
 const ethMainnet =
     "https://eth-mainnet.g.alchemy.com/v2/I177iatNveGoBt3geurbwflbKjKh8bzq";
 const ethSepolia =
     "https://eth-sepolia.g.alchemy.com/v2/I177iatNveGoBt3geurbwflbKjKh8bzq";
 const xlayerMainnet = "https://endpoints.omniatech.io/v1/xlayer/mainnet/public";
 const xlayerTestnet = "https://endpoints.omniatech.io/v1/xlayer/testnet/public";
+const foxyTokenAddress = "0x5FBDF89403270a1846F5ae7D113A989F850d1566";
 const ethUSDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const ethSepoliaUSDC = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
 const xlayerUSDC = "0x74b7f16337b8972027f6196a17a631ac6de26d22";
@@ -19,19 +21,20 @@ const ethChainId = "1";
 const ethSepoliaChainId = "11155111";
 const xlayerChainId = "196";
 const xlayerTestnetChainId = "195";
+const lineaChainId = "59144";
 
-const web3 = new Web3(xlayerMainnet);
 const apiBaseUrl = "https://www.okx.com/api/v5/dex/aggregator";
 
 // Environment variables
 // XLayer: 196 | XLayer Testnet: 195 | ETH Mainnet: 1 | ETH Sepolia: 11155111
 
-export const chainId = xlayerChainId;
-export const fromTokenAddress = baseTokenAddress;
-export const toTokenAddress = xlayerUSDC;
+const web3 = new Web3(lineaMainnet);
+export const chainId = lineaChainId;
+export const toTokenAddress = baseTokenAddress;
+export const fromTokenAddress = foxyTokenAddress;
 export const ratio = BigInt(3) / BigInt(2);
 export const user = process.env.REACT_APP_USER_ADDRESS;
-export const fromAmount = 10 ** 8;
+export const fromAmount = "10";
 export const privateKey = process.env.REACT_APP_PRIVATE_KEY;
 export const spenderAddress = okxDexAddress;
 
@@ -86,15 +89,26 @@ export async function getQuote(quoteParams) {
     return response.json();
 }
 
-export const tokenABI = [
+const tokenABI = [
     {
         constant: true,
         inputs: [
-            { name: "_owner", type: "address" },
-            { name: "_spender", type: "address" },
+            {
+                name: "_owner",
+                type: "address",
+            },
+            {
+                name: "_spender",
+                type: "address",
+            },
         ],
         name: "allowance",
-        outputs: [{ name: "", type: "uint256" }],
+        outputs: [
+            {
+                name: "",
+                type: "uint256",
+            },
+        ],
         payable: false,
         stateMutability: "view",
         type: "function",
@@ -202,6 +216,7 @@ function getSwapHeaders(swapParams) {
 
     return {
         "Content-Type": "application/json",
+        "OK-PROJECT-ID": process.env.REACT_APP_PROJECT_ID,
         "OK-ACCESS-KEY": apiKey,
         "OK-ACCESS-SIGN": cryptoJS.enc.Base64.stringify(
             cryptoJS.HmacSHA256(stringToSign, secretKey),
