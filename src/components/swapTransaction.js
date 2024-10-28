@@ -1,45 +1,189 @@
-import React, { useState } from 'react';
-import { sendSwapTx, chainId, fromTokenAddress, toTokenAddress, user } from '../utils/dexUtils';
-import './theme.css';
+import React, { useState, useCallback } from "react";
+import {
+    sendSwapTx,
+    chainId,
+    fromTokenAddress,
+    toTokenAddress,
+    user,
+} from "../utils/dexUtils";
+import "./theme.css";
 
 const SwapTransaction = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [result, setResult] = useState(null);
-    const [amount, setAmount] = useState('');
+    const [txHash, setTxHash] = useState(null);
+    const [amount, setAmount] = useState("");
+    const tokenDecimals = 6;
+
+    const validateSwapParams = useCallback((amount) => {
+        const errors = [];
+
+        if (!amount) {
+            errors.push("Please enter an amount to swap");
+            return errors;
+        }
+
+        if (isNaN(amount) || parseFloat(amount) <= 0) {
+            errors.push("Invalid amount");
+        }
+
+        if (
+            !fromTokenAddress ||
+            !fromTokenAddress.match(/^0x[a-fA-F0-9]{40}$/)
+        ) {
+            errors.push("Invalid from token address");
+        }
+        if (!toTokenAddress || !toTokenAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+            errors.push("Invalid to token address");
+        }
+
+        if (!user || !user.match(/^0x[a-fA-F0-9]{40}$/)) {
+            errors.push("Invalid wallet address");
+        }
+
+        return errors;
+    }, []);
 
     const handleAmountChange = (e) => {
         setAmount(e.target.value);
+        setError(null);
     };
-
 
     const handleSwap = async () => {
         setLoading(true);
         setError(null);
         try {
+            const validationErrors = validateSwapParams(amount);
+            if (validationErrors.length > 0) {
+                throw new Error(validationErrors.join(", "));
+            }
+
+            const amountInSmallestUnit = (
+                parseFloat(amount) * Math.pow(10, tokenDecimals)
+            ).toString();
+
             const swapParams = {
                 chainId: chainId,
                 fromTokenAddress: fromTokenAddress,
                 toTokenAddress: toTokenAddress,
-                amount: amount,
-                slippage: '0.03',
-                userWalletAddress: user
+                amount: amountInSmallestUnit,
+                slippage: "0.5",
+                userWalletAddress: user,
             };
-            const swapResult = await sendSwapTx(swapParams);
-            setResult(`Swap transaction sent. Hash: ${swapResult.transactionHash}`);
+
+            const swapData = await sendSwapTx(swapParams);
+            setResult(swapData);
+            if (swapData.blockHash) {
+                setTxHash(swapData.transactionHash);
+            }
         } catch (err) {
-            setError('Failed to execute swap');
+            setError("Failed to execute swap: " + (err.message || ""));
             console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) return <p className="loading-message">Executing swap...</p>;
-    if (error) return <p className="error-message">Error: {error}</p>;
+    const renderResult = () => {
+        if (!result) return null;
+
+        // Handle blockchain transaction result
+        if (result.blockHash) {
+            return (
+                <div className="result-container">
+                    <h3>Swap Transaction Completed</h3>
+                    <div className="result-details">
+                        <div className="result-item">
+                            <span className="result-key">Block Hash:</span>
+                            <span className="result-value">
+                                {result.blockHash}
+                            </span>
+                        </div>
+                        <div className="result-item">
+                            <span className="result-key">Block Number:</span>
+                            <span className="result-value">
+                                {result.blockNumber?.toString()}
+                            </span>
+                        </div>
+                        <div className="result-item">
+                            <span className="result-key">Gas Used:</span>
+                            <span className="result-value">
+                                {result.cumulativeGasUsed?.toString()}
+                            </span>
+                        </div>
+                        <div className="result-item">
+                            <span className="result-key">Gas Price:</span>
+                            <span className="result-value">
+                                {result.effectiveGasPrice?.toString()}
+                            </span>
+                        </div>
+                        <div className="result-item">
+                            <span className="result-key">From:</span>
+                            <span className="result-value">{result.from}</span>
+                        </div>
+                        {txHash && (
+                            <div className="result-item">
+                                <span className="result-key">
+                                    Transaction Hash:
+                                </span>
+                                <span className="result-value">{txHash}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Handle swap data result
+        if (
+            Array.isArray(result) &&
+            result.length > 0 &&
+            result[0].routerResult
+        ) {
+            const swapInfo = result[0];
+            return (
+                <div className="result-container">
+                    <h3>Swap Transaction Details</h3>
+                    <div className="result-details">
+                        {swapInfo.routerResult && (
+                            <div className="result-item">
+                                <span className="result-key">
+                                    Router Result:
+                                </span>
+                                <div className="result-value">
+                                    <pre>
+                                        {JSON.stringify(
+                                            swapInfo.routerResult,
+                                            null,
+                                            2,
+                                        )}
+                                    </pre>
+                                </div>
+                            </div>
+                        )}
+                        {swapInfo.tx && (
+                            <div className="result-item">
+                                <span className="result-key">
+                                    Transaction Data:
+                                </span>
+                                <div className="result-value">
+                                    <pre>
+                                        {JSON.stringify(swapInfo.tx, null, 2)}
+                                    </pre>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        return null;
+    };
 
     return (
-        <div>
+        <div className="approve-transaction-container">
             <h2>Swap Transaction</h2>
             <div className="input-container">
                 <label htmlFor="approveAmount">Enter amount to swap:</label>
@@ -52,19 +196,25 @@ const SwapTransaction = () => {
                     step="0.000000000000000001"
                 />
             </div>
-
             {loading ? (
-                <p className="loading-message">Approving transaction...</p>
+                <p className="loading-message">
+                    Processing swap transaction...
+                </p>
             ) : error ? (
                 <p className="error-message">Error: {error}</p>
             ) : (
                 <>
-                    <button onClick={handleSwap} className="swap-button" disabled={!amount}>Swap</button>
-                    {result && <pre>{result}</pre>}
+                    <button
+                        onClick={handleSwap}
+                        className="approve-button"
+                        disabled={!amount}
+                    >
+                        Swap
+                    </button>
+                    {renderResult()}
                 </>
             )}
         </div>
-
     );
 };
 
