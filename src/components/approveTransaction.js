@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import BN from 'bn.js';
 import { approveTransaction, chainId, fromTokenAddress, sendApproveTx } from '../utils/dexUtils';
 import './theme.css';
 
@@ -8,10 +9,18 @@ const ApproveTransaction = () => {
     const [result, setResult] = useState(null);
     const [txHash, setTxHash] = useState(null);
     const [amount, setAmount] = useState('');
-    const tokenDecimals = 6; // Adjust this based on your token's decimals
+    const tokenDecimals = 18; // Adjust this based on your token's decimals
 
     const handleAmountChange = (e) => {
         setAmount(e.target.value);
+    };
+
+    const convertToTokenUnits = (inputAmount) => {
+        // Convert amount to token units using BN
+        const [whole, decimal = ""] = inputAmount.split(".");
+        const decimals = decimal.padEnd(tokenDecimals, "0").slice(0, tokenDecimals);
+        const amount = whole + decimals;
+        return new BN(amount).toString();
     };
 
     const handleApprove = async () => {
@@ -23,9 +32,9 @@ const ApproveTransaction = () => {
         setLoading(true);
         setError(null);
         try {
-            const amountInSmallestUnit = (parseFloat(amount) * Math.pow(10, tokenDecimals)).toString();
-            const approveResult = await approveTransaction(chainId, fromTokenAddress, amountInSmallestUnit);
-            const sendApprovalResult = await sendApproveTx(amountInSmallestUnit);
+            const amountInTokenUnits = convertToTokenUnits(amount);
+            const approveResult = await approveTransaction(chainId, fromTokenAddress, amountInTokenUnits);
+            const sendApprovalResult = await sendApproveTx(amountInTokenUnits);
             setResult(approveResult);
             setTxHash(sendApprovalResult ? sendApprovalResult.transactionHash : null);
         } catch (err) {
@@ -35,6 +44,7 @@ const ApproveTransaction = () => {
             setLoading(false);
         }
     };
+
     const renderResult = () => {
         if (!result) return null;
         const { code, data, msg } = result;
