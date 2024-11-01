@@ -38,36 +38,36 @@ const AllowanceChecker = () => {
     }, []);
 
     const convertScientificToString = (scientific) => {
-        const [mantissa, exponent] = scientific.toString().split('e+');
-        const exponentNum = parseInt(exponent || '0');
+        let [mantissa, exponent] = scientific.toString().split("e+");
+        const exponentNum = parseInt(exponent || "0");
+        let result = mantissa.replace(".", "");
 
-        let number = mantissa.replace('.', '');
-        if (mantissa.includes('.')) {
-            const decimals = mantissa.split('.')[1].length;
-            exponentNum -= decimals;
+        if (mantissa.includes(".")) {
+            const decimals = mantissa.split(".")[1].length;
+            result = result.padEnd(result.length + exponentNum - decimals, "0");
+        } else {
+            result = result.padEnd(result.length + exponentNum, "0");
         }
 
-        number = number + '0'.repeat(exponentNum);
-        return number;
+        return result;
     };
 
     const formatWeiToTokens = (weiAmount) => {
         try {
             // Convert from scientific notation if needed
-            const weiString = weiAmount.toString().includes('e') 
+            const weiString = weiAmount.toString().includes("e")
                 ? convertScientificToString(weiAmount)
                 : weiAmount.toString();
 
-            console.log("WeZi string:", weiString);
-
+            console.log("Wei string:", weiString);
             const wei = new BN(weiString);
             const divisor = new BN(10).pow(new BN(tokenDecimals));
             const tokens = wei.div(divisor);
 
             return tokens.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         } catch (err) {
-            console.error('Error formatting wei amount:', err);
-            return '0';
+            console.error("Error formatting wei amount:", err);
+            return "0";
         }
     };
 
