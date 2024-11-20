@@ -4,40 +4,32 @@ import cryptoJS from "crypto-js";
 const lineaMainnet = "https://linea.blockpi.network/v1/rpc/public";
 const ethMainnet =
     "https://eth-mainnet.g.alchemy.com/v2/I177iatNveGoBt3geurbwflbKjKh8bzq";
-const ethSepolia =
-    "https://eth-sepolia.g.alchemy.com/v2/I177iatNveGoBt3geurbwflbKjKh8bzq";
-const xlayerMainnet = "https://endpoints.omniatech.io/v1/xlayer/mainnet/public";
-const xlayerTestnet = "https://endpoints.omniatech.io/v1/xlayer/testnet/public";
-const foxyTokenAddress = "0x5FBDF89403270a1846F5ae7D113A989F850d1566";
 const ethUSDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-const ethSepoliaUSDC = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
-const xlayerUSDC = "0x74b7f16337b8972027f6196a17a631ac6de26d22";
-const xlayerTestnetUSDC = "0xea1d4778068089dd021859da423f5ed95efc7cdc";
-const demoAddress = "0x40aa958dd87fc8305b97f2ba922cddca374bcd7f";
-const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 const personalAddress = "0xd37268a16374d0a52c801c06a11ef32a35fcd2b9"; // Change to your personal address
-const okxDexAddress = "0x8b773D83bc66Be128c60e07E17C8901f7a64F000";
+const foxyTokenAddress = "0x5FBDF89403270a1846F5ae7D113A989F850d1566";
+const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 const okxDexLinea = "0x57df6092665eb6058DE53939612413ff4B09114E";
-const ethChainId = "1";
-const ethSepoliaChainId = "11155111";
-const xlayerChainId = "196";
-const xlayerTestnetChainId = "195";
 const lineaChainId = "59144";
 
+const xlayerMainnet = "https://endpoints.omniatech.io/v1/xlayer/mainnet/public";
+const okxDexAddress = "0x8b773D83bc66Be128c60e07E17C8901f7a64F000";
+const xlayerChainId = "196";
+const xlayerUSDC = "0x74b7f16337b8972027f6196a17a631ac6de26d22";
+const wethAddress = "0x5a77f1443d16ee5761d310e38b62f77f726bc71c";
 const apiBaseUrl = "https://www.okx.com/api/v5/dex/aggregator";
 
 // Environment variables
 // XLayer: 196 | XLayer Testnet: 195 | ETH Mainnet: 1 | ETH Sepolia: 11155111
 
-const web3 = new Web3(lineaMainnet);
-export const chainId = lineaChainId;
+const web3 = new Web3(xlayerMainnet);
+export const chainId = xlayerChainId;
 export const toTokenAddress = baseTokenAddress;
-export const fromTokenAddress = foxyTokenAddress;
+export const fromTokenAddress = wethAddress;
 export const ratio = BigInt(3) / BigInt(2);
 export const user = process.env.REACT_APP_USER_ADDRESS;
 export const fromAmount = "10";
 export const privateKey = process.env.REACT_APP_PRIVATE_KEY;
-export const spenderAddress = okxDexLinea;
+export const spenderAddress = okxDexAddress;
 
 const apiKey = process.env.REACT_APP_API_KEY;
 const secretKey = process.env.REACT_APP_SECRET_KEY;

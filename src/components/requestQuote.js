@@ -12,18 +12,24 @@ const RequestQuote = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [fromAmount, setFromAmount] = useState("");
+  const [displayValue, setDisplayValue] = useState("");
   const [showQuoteDetails, setShowQuoteDetails] = useState(true);
-  const tokenDecimals = 6; // Assuming 6 decimals, adjust if needed
+  const tokenDecimals = 18;
 
   const handleAmountChange = (e) => {
     const input = e.target.value;
+    setDisplayValue(input);
+
     if (input === "") {
       setFromAmount("");
     } else {
-      const adjustedAmount = (
-        parseFloat(input) * Math.pow(10, tokenDecimals)
-      ).toString();
-      setFromAmount(adjustedAmount);
+      const [whole = "", decimal = ""] = input.split(".");
+      const cleanedWhole = whole.replace(/^0+/, "") || "0";
+      const paddedDecimal = decimal
+        .padEnd(tokenDecimals, "0")
+        .slice(0, tokenDecimals);
+      const fullNumber = cleanedWhole + paddedDecimal;
+      setFromAmount(fullNumber);
     }
   };
 
@@ -46,10 +52,6 @@ const RequestQuote = () => {
       setLoading(false);
     }
   };
-
-  // const formatNumberWithCommas = (number) => {
-  //   return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  // };
 
   const formatAmount = (amount, decimals) => {
     const parsedAmount = parseFloat(amount) / Math.pow(10, decimals);
@@ -82,8 +84,10 @@ const RequestQuote = () => {
     const toAmountFormatted = parseFloat(
       formatAmount(quote.toTokenAmount, quote.toToken.decimal),
     ).toFixed(4);
-    const estimateGasFeeFormatted =
-      formatAmount(quote.estimateGasFee, quote.fromToken.decimal) / 10;
+    const estimateGasFeeFormatted = formatAmount(
+      quote.estimateGasFee,
+      quote.fromToken.decimal,
+    );
 
     return (
       <div className="quote-details">
@@ -93,7 +97,7 @@ const RequestQuote = () => {
         </p>
         <p>
           <strong>Estimate Gas Fee:</strong>{" "}
-          {parseFloat(estimateGasFeeFormatted).toFixed(4)}
+          {parseFloat(quote.estimateGasFee / 10 ** 8).toFixed(4)}
         </p>
         <h4>From Token</h4>
         {renderTokenInfo(quote.fromToken)}
@@ -134,13 +138,7 @@ const RequestQuote = () => {
         <input
           type="number"
           id="fromAmount"
-          value={
-            fromAmount
-              ? (
-                  parseFloat(fromAmount) / Math.pow(10, tokenDecimals)
-                ).toString()
-              : ""
-          }
+          value={displayValue}
           onChange={handleAmountChange}
           placeholder="Enter amount"
           step={`1e-${tokenDecimals}`}

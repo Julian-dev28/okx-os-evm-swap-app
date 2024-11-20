@@ -78,7 +78,7 @@ const AllowanceChecker = () => {
             {error && <p className="error-message">Error: {error}</p>}
             {allowance !== null && (
                 <p className="allowance-value">
-                    {formatWeiToTokens(allowance)} {" "}
+                    {formatWeiToTokens(allowance)}{" "}
                 </p>
             )}
             <button
