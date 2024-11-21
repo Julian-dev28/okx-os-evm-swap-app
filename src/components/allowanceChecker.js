@@ -26,6 +26,10 @@ const AllowanceChecker = () => {
             console.log("Raw allowance (wei):", result);
             setAllowance(result);
         } catch (err) {
+            if (fromTokenAddress === "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE") {
+                setError("Allowance not required for native token");
+                return;
+            }
             setError("Failed to fetch allowance");
             console.error(err);
         } finally {

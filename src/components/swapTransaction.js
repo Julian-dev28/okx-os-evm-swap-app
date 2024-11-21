@@ -116,6 +116,14 @@ const SwapTransaction = () => {
                             <div className="result-item">
                                 <span className="result-key">Transaction Hash:</span>
                                 <span className="result-value">{txHash}</span>
+                                <a
+                                    href={`https://www.oklink.com/avax/tx/${txHash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="tx-link"
+                                >
+                                    <br />View on Explorer
+                                </a>
                             </div>
                         )}
                     </div>

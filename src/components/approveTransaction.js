@@ -13,6 +13,7 @@ const ApproveTransaction = () => {
 
     const handleAmountChange = (e) => {
         setAmount(e.target.value);
+        setError(null);
     };
 
     const convertToTokenUnits = (inputAmount) => {
@@ -32,7 +33,7 @@ const ApproveTransaction = () => {
         setLoading(true);
         setError(null);
         try {
-            const amountInTokenUnits = convertToTokenUnits(amount);
+            const amountInTokenUnits = (amount);
             const approveResult = await approveTransaction(chainId, fromTokenAddress, amountInTokenUnits);
             const sendApprovalResult = await sendApproveTx(amountInTokenUnits);
             setResult(approveResult);
@@ -76,6 +77,14 @@ const ApproveTransaction = () => {
                         <div className="result-item">
                             <span className="result-key">Transaction Hash:</span>
                             <span className="result-value">{txHash}</span>
+                            <a
+                                href={`https://www.oklink.com/avax/tx/${txHash}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="tx-link"
+                            >
+                                <br />View on Explorer
+                            </a>
                         </div>
                     )}
                 </div>
