@@ -7,7 +7,7 @@ const targetChainId = "43114";
 const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 const wavaxTokenAddress = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
 const apiBaseUrl = "https://www.okx.com/api/v5/dex/aggregator";
-const constRandomAddress = "0xd37268a16374d0a52c801c06a11ef32a35fcd2b9"
+const RandomAddress = "0xd37268a16374d0a52c801c06a11ef32a35fcd2b9"
 
 
 // Environment variables
