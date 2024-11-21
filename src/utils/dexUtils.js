@@ -4,8 +4,8 @@ import cryptoJS from "crypto-js";
 const avalancheCMainnet = "https://avalanche-c-chain-rpc.publicnode.com";
 const okxDexAddress = "0x40aA958dd87FC8305b97f2BA922CDdCa374bcD7f";
 const targetChainId = "43114";
-const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-const wavaxTokenAddress = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
+export const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+export const wavaxTokenAddress = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
 const apiBaseUrl = "https://www.okx.com/api/v5/dex/aggregator";
 const RandomAddress = "0xd37268a16374d0a52c801c06a11ef32a35fcd2b9"
 
@@ -13,8 +13,8 @@ const RandomAddress = "0xd37268a16374d0a52c801c06a11ef32a35fcd2b9"
 // Environment variables
 const web3 = new Web3(avalancheCMainnet);
 export const chainId = targetChainId;
-export const fromTokenAddress = wavaxTokenAddress;
-export const toTokenAddress = baseTokenAddress;
+export const fromTokenAddress = baseTokenAddress;
+export const toTokenAddress = wavaxTokenAddress;
 export const ratio = BigInt(3) / BigInt(2);
 export const user = process.env.REACT_APP_USER_ADDRESS;
 export const privateKey = process.env.REACT_APP_PRIVATE_KEY;
@@ -282,6 +282,17 @@ export async function sendSwapTx(swapParams) {
 
     const swapDataTxInfo = swapData[0].tx;
     const nonce = await web3.eth.getTransactionCount(user, "latest");
+
+    // Log the transaction parameters
+    console.log("Transaction parameters:", {
+        data: swapDataTxInfo.data,
+        gasPrice: BigInt(swapDataTxInfo.gasPrice) * BigInt(ratio),
+        to: swapDataTxInfo.to,
+        value: swapDataTxInfo.value,
+        gas: BigInt(swapDataTxInfo.gas) * BigInt(ratio),
+        nonce
+    });
+
     let signTransactionParams = {
         data: swapDataTxInfo.data,
         gasPrice: BigInt(swapDataTxInfo.gasPrice) * BigInt(ratio),
@@ -295,9 +306,7 @@ export async function sendSwapTx(swapParams) {
         signTransactionParams,
         privateKey,
     );
-    const chainTxInfo = await web3.eth.sendSignedTransaction(rawTransaction);
-    console.log("chainTxInfo:", chainTxInfo);
-    return chainTxInfo;
+    return web3.eth.sendSignedTransaction(rawTransaction);
 }
 
 // Transaction signing and sending
@@ -308,4 +317,103 @@ export async function sendSignedTransaction(txObject) {
     );
     const result = await web3.eth.sendSignedTransaction(rawTransaction);
     return result;
+}
+
+// Cross-chain quote-related functions
+function getCrossChainQuoteHeaders(params) {
+    const date = new Date();
+    const timestamp = date.toISOString();
+    const stringToSign =
+        timestamp +
+        "GET" +
+        "/api/v5/dex/cross-chain/quote?" +
+        new URLSearchParams(params).toString();
+
+    return {
+        "Content-Type": "application/json",
+        "OK-PROJECT-ID": projectId,
+        "OK-ACCESS-KEY": apiKey,
+        "OK-ACCESS-SIGN": cryptoJS.enc.Base64.stringify(
+            cryptoJS.HmacSHA256(stringToSign, secretKey),
+        ),
+        "OK-ACCESS-TIMESTAMP": timestamp,
+        "OK-ACCESS-PASSPHRASE": apiPassphrase,
+    };
+}
+
+export async function getCrossChainQuote(amount,) {
+    const quoteParams = {
+        fromChainId: targetChainId,  // Avalanche C-Chain
+        toChainId: "1",    // 
+        fromTokenAddress: baseTokenAddress, // Native AVAX
+        toTokenAddress: baseTokenAddress,   // Native ETH 
+        amount: amount,
+        slippage: "0.01",      // 1% slippage
+        sort: "0"              // default route
+    };
+
+    const apiRequestUrl = "https://www.okx.com/api/v5/dex/cross-chain/quote?" + new URLSearchParams(quoteParams).toString();
+    const headersParams = getCrossChainQuoteHeaders(quoteParams);
+
+    const response = await fetch(apiRequestUrl, {
+        method: "GET",
+        headers: headersParams,
+    });
+
+    console.log("response:", response);
+
+    if (!response.ok) {
+        throw new Error("Network response was not ok");
+    }
+
+    return response.json();
+}
+
+export async function sendCrossChainSwap(amount) {
+    try {
+        // Get the quote first
+        const quoteResult = await getCrossChainQuote(amount);
+        if (!quoteResult.data || !quoteResult.data[0]) {
+            throw new Error("Invalid quote data received");
+        }
+
+        // Get the swap data
+        const swapParams = {
+            fromChainId: targetChainId,
+            toChainId: "1",
+            fromTokenAddress: baseTokenAddress,
+            toTokenAddress: baseTokenAddress,
+            amount: amount,
+            slippage: "0.01",
+            quote: quoteResult.data[0]
+        };
+
+        const { data: swapData } = await getSwapData(swapParams);
+
+        if (!swapData || swapData.length === 0 || !swapData[0].tx) {
+            throw new Error("Invalid swap data received");
+        }
+
+        const swapDataTxInfo = swapData[0].tx;
+        const nonce = await web3.eth.getTransactionCount(user, "latest");
+
+        let signTransactionParams = {
+            data: swapDataTxInfo.data,
+            gasPrice: BigInt(swapDataTxInfo.gasPrice) * BigInt(ratio),
+            to: swapDataTxInfo.to,
+            value: swapDataTxInfo.value,
+            gas: BigInt(swapDataTxInfo.gas) * BigInt(ratio),
+            nonce,
+        };
+
+        const { rawTransaction } = await web3.eth.accounts.signTransaction(
+            signTransactionParams,
+            privateKey,
+        );
+
+        return web3.eth.sendSignedTransaction(rawTransaction);
+    } catch (error) {
+        console.error("Cross-chain swap failed:", error);
+        throw error;
+    }
 }

@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import BN from 'bn.js';
-import { sendSwapTx, chainId, fromTokenAddress, toTokenAddress, user } from '../utils/dexUtils';
+import { sendSwapTx, chainId, fromTokenAddress, toTokenAddress, user, wavaxTokenAddress, baseTokenAddress } from '../utils/dexUtils';
+
 import './theme.css';
 
 const SwapTransaction = () => {
@@ -54,30 +55,30 @@ const SwapTransaction = () => {
         setLoading(true);
         setError(null);
         try {
-            const validationErrors = validateSwapParams(amount);
-            if (validationErrors.length > 0) {
-                throw new Error(validationErrors.join(', '));
-            }
-
             const amountInTokenUnits = convertToTokenUnits(amount);
+            console.log('Amount in token units:', amountInTokenUnits);
 
+            // Now proceed with swap
             const swapParams = {
                 chainId: chainId,
-                fromTokenAddress: fromTokenAddress,
-                toTokenAddress: toTokenAddress,
+                fromTokenAddress: wavaxTokenAddress,
+                toTokenAddress: baseTokenAddress,
                 amount: amountInTokenUnits,
                 slippage: '0.5',
                 userWalletAddress: user
             };
 
+            console.log('Swap params:', swapParams);
             const swapData = await sendSwapTx(swapParams);
+            console.log('Swap response:', swapData);
+
             setResult(swapData);
             if (swapData.blockHash) {
                 setTxHash(swapData.transactionHash);
             }
         } catch (err) {
+            console.error('Swap error details:', err);
             setError('Failed to execute swap: ' + (err.message || ''));
-            console.error(err);
         } finally {
             setLoading(false);
         }
@@ -164,7 +165,7 @@ const SwapTransaction = () => {
 
     return (
         <div className="approve-transaction-container">
-            <h2>AVAX → WAVAX Swap</h2>
+            <h2>WAVAX → AVAX Swap</h2>
             <div className="input-container">
                 <label htmlFor="approveAmount">Enter amount to swap:</label>
                 <input

@@ -132,7 +132,7 @@ const RequestQuote = () => {
 
   return (
     <div className="quote-container">
-      <h2>Quote Request</h2>
+      <h2>AVAX → WAVAX Quote Request</h2>
       <div className="input-container">
         <label htmlFor="fromAmount">Enter amount:</label>
         <input
