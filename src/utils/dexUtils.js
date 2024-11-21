@@ -1,30 +1,18 @@
 import Web3 from "web3";
 import cryptoJS from "crypto-js";
 
-const lineaMainnet = "https://linea.blockpi.network/v1/rpc/public";
-const ethMainnet =
-    "https://eth-mainnet.g.alchemy.com/v2/I177iatNveGoBt3geurbwflbKjKh8bzq";
-const ethUSDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-const personalAddress = "0xd37268a16374d0a52c801c06a11ef32a35fcd2b9"; // Change to your personal address
-const foxyTokenAddress = "0x5FBDF89403270a1846F5ae7D113A989F850d1566";
+const avalancheCMainnet = "https://api.avax.network/ext/bc/C/rpc";
+const okxDexAddress = "0x40aA958dd87FC8305b97f2BA922CDdCa374bcD7f";
+const targetChainId = "43114";
 const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-const okxDexLinea = "0x57df6092665eb6058DE53939612413ff4B09114E";
-const lineaChainId = "59144";
-
-const xlayerMainnet = "https://endpoints.omniatech.io/v1/xlayer/mainnet/public";
-const okxDexAddress = "0x8b773D83bc66Be128c60e07E17C8901f7a64F000";
-const xlayerChainId = "196";
-const xlayerUSDC = "0x74b7f16337b8972027f6196a17a631ac6de26d22";
-const wethAddress = "0x5a77f1443d16ee5761d310e38b62f77f726bc71c";
+const wavaxTokenAddress = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
 const apiBaseUrl = "https://www.okx.com/api/v5/dex/aggregator";
 
 // Environment variables
-// XLayer: 196 | XLayer Testnet: 195 | ETH Mainnet: 1 | ETH Sepolia: 11155111
-
-const web3 = new Web3(xlayerMainnet);
-export const chainId = xlayerChainId;
+const web3 = new Web3(avalancheCMainnet);
+export const chainId = targetChainId;
+export const fromTokenAddress = wavaxTokenAddress;
 export const toTokenAddress = baseTokenAddress;
-export const fromTokenAddress = wethAddress;
 export const ratio = BigInt(3) / BigInt(2);
 export const user = process.env.REACT_APP_USER_ADDRESS;
 export const fromAmount = "10";
