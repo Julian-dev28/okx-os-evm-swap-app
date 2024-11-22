@@ -61,15 +61,6 @@ const SwapTransactionCC = () => {
 
             const amountInTokenUnits = convertToTokenUnits(amount);
 
-            const swapParams = {
-                chainId: chainId,
-                fromTokenAddress: fromTokenAddress,
-                toTokenAddress: toTokenAddress,
-                amount: amountInTokenUnits,
-                slippage: '0.5',
-                userWalletAddress: user
-            };
-
             const swapData = await sendCrossChainSwap(amountInTokenUnits);
             setResult(swapData);
             if (swapData.blockHash) {
