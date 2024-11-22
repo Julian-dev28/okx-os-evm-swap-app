@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import BN from 'bn.js';
-import { sendSwapTx, chainId, fromTokenAddress, toTokenAddress, user, wavaxTokenAddress, baseTokenAddress } from '../utils/dexUtils';
-
+import { sendSwapTx, chainId, fromTokenAddress, toTokenAddress, user } from '../utils/dexUtils';
 import './theme.css';
 
 const SwapTransaction = () => {
@@ -51,34 +50,34 @@ const SwapTransaction = () => {
         setError(null);
     };
 
-    const handleSwap = async () => {
+    const handleReverseSwap = async () => {
         setLoading(true);
         setError(null);
         try {
-            const amountInTokenUnits = convertToTokenUnits(amount);
-            console.log('Amount in token units:', amountInTokenUnits);
+            const validationErrors = validateSwapParams(amount);
+            if (validationErrors.length > 0) {
+                throw new Error(validationErrors.join(', '));
+            }
 
-            // Now proceed with swap
+            const amountInTokenUnits = convertToTokenUnits(amount);
+
             const swapParams = {
                 chainId: chainId,
-                fromTokenAddress: wavaxTokenAddress,
-                toTokenAddress: baseTokenAddress,
+                fromTokenAddress: toTokenAddress,
+                toTokenAddress: fromTokenAddress,
                 amount: amountInTokenUnits,
                 slippage: '0.5',
                 userWalletAddress: user
             };
 
-            console.log('Swap params:', swapParams);
             const swapData = await sendSwapTx(swapParams);
-            console.log('Swap response:', swapData);
-
             setResult(swapData);
             if (swapData.blockHash) {
                 setTxHash(swapData.transactionHash);
             }
         } catch (err) {
-            console.error('Swap error details:', err);
             setError('Failed to execute swap: ' + (err.message || ''));
+            console.error(err);
         } finally {
             setLoading(false);
         }
@@ -183,7 +182,7 @@ const SwapTransaction = () => {
                 <p className="error-message">Error: {error}</p>
             ) : (
                 <>
-                    <button onClick={handleSwap} className="approve-button" disabled={!amount}>
+                    <button onClick={handleReverseSwap} className="approve-button" disabled={!amount}>
                         Swap
                     </button>
                     {renderResult()}

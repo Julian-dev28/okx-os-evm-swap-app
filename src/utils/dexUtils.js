@@ -2,12 +2,12 @@ import Web3 from "web3";
 import cryptoJS from "crypto-js";
 
 const avalancheCMainnet = "https://avalanche-c-chain-rpc.publicnode.com";
-const okxDexAddress = "0x40aA958dd87FC8305b97f2BA922CDdCa374bcD7f";
+const okxDexAddress = "0x1daC23e41Fc8ce857E86fD8C1AE5b6121C67D96d";
 const targetChainId = "43114";
 export const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 export const wavaxTokenAddress = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
 const apiBaseUrl = "https://www.okx.com/api/v5/dex/aggregator";
-const RandomAddress = "0xd37268a16374d0a52c801c06a11ef32a35fcd2b9"
+const RandomAddress = "0x85032bb06a9e5c96e3a1bb5e2475719fd6d4796e"
 
 
 // Environment variables
