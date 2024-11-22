@@ -164,7 +164,7 @@ const SwapTransaction = () => {
 
     return (
         <div className="approve-transaction-container">
-            <h2>AVAX → WAVAX Swap</h2>
+            <h2>AVAX → WAVAX Swap (Single-Chain)</h2>
             <div className="input-container">
                 <label htmlFor="approveAmount">Enter amount to swap:</label>
                 <input
