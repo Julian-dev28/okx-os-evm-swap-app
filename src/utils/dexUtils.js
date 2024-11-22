@@ -341,15 +341,14 @@ function getCrossChainQuoteHeaders(params) {
     };
 }
 
-export async function getCrossChainQuote(amount,) {
+export async function getCrossChainQuote(amount) {
     const quoteParams = {
         fromChainId: targetChainId,  // Avalanche C-Chain
-        toChainId: "1",    // 
+        toChainId: 59144,    // 
         fromTokenAddress: baseTokenAddress, // Native AVAX
         toTokenAddress: baseTokenAddress,   // Native ETH 
         amount: amount,
         slippage: "0.01",      // 1% slippage
-        sort: "0"              // default route
     };
 
     const apiRequestUrl = "https://www.okx.com/api/v5/dex/cross-chain/quote?" + new URLSearchParams(quoteParams).toString();
@@ -369,51 +368,93 @@ export async function getCrossChainQuote(amount,) {
     return response.json();
 }
 
+function getCrossChainQuoteSwapHeaders(params) {
+    const date = new Date();
+    const timestamp = date.toISOString();
+    const stringToSign =
+        timestamp +
+        "GET" +
+        "/api/v5/dex/cross-chain/build-tx?" +
+        new URLSearchParams(params).toString();
+
+    return {
+        "Content-Type": "application/json",
+        "OK-PROJECT-ID": projectId,
+        "OK-ACCESS-KEY": apiKey,
+        "OK-ACCESS-SIGN": cryptoJS.enc.Base64.stringify(
+            cryptoJS.HmacSHA256(stringToSign, secretKey),
+        ),
+        "OK-ACCESS-TIMESTAMP": timestamp,
+        "OK-ACCESS-PASSPHRASE": apiPassphrase,
+    };
+}
+
 export async function sendCrossChainSwap(amount) {
+    const quoteParams = {
+        fromChainId: targetChainId,
+        toChainId: 59144,
+        fromTokenAddress: baseTokenAddress,
+        toTokenAddress: baseTokenAddress,
+        amount: amount,
+        slippage: "0.01",
+        userWalletAddress: user,
+        sort: 0,
+    };
+
     try {
-        // Get the quote first
-        const quoteResult = await getCrossChainQuote(amount);
-        if (!quoteResult.data || !quoteResult.data[0]) {
-            throw new Error("Invalid quote data received");
+        // Make the direct API call for the swap data
+        const apiRequestUrl = "https://www.okx.com/api/v5/dex/cross-chain/build-tx?" +
+            new URLSearchParams(quoteParams).toString();
+        const headersParams = getCrossChainQuoteSwapHeaders(quoteParams);
+
+        const response = await fetch(apiRequestUrl, {
+            method: "GET",
+            headers: headersParams,
+        });
+
+        const swapData = await response.json();
+
+        // Validate the response data
+        if (!swapData || !swapData.data || !swapData.data[0] || !swapData.data[0].tx) {
+            throw new Error("Invalid swap data received: " + JSON.stringify(swapData));
         }
 
-        // Get the swap data
-        const swapParams = {
-            fromChainId: targetChainId,
-            toChainId: "1",
-            fromTokenAddress: baseTokenAddress,
-            toTokenAddress: baseTokenAddress,
-            amount: amount,
-            slippage: "0.01",
-            quote: quoteResult.data[0]
-        };
-
-        const { data: swapData } = await getSwapData(swapParams);
-
-        if (!swapData || swapData.length === 0 || !swapData[0].tx) {
-            throw new Error("Invalid swap data received");
-        }
-
-        const swapDataTxInfo = swapData[0].tx;
+        const swapDataTxInfo = swapData.data[0].tx;
         const nonce = await web3.eth.getTransactionCount(user, "latest");
 
+        // Prepare transaction parameters
         let signTransactionParams = {
+            from: user,
             data: swapDataTxInfo.data,
-            gasPrice: BigInt(swapDataTxInfo.gasPrice) * BigInt(ratio),
             to: swapDataTxInfo.to,
             value: swapDataTxInfo.value,
-            gas: BigInt(swapDataTxInfo.gas) * BigInt(ratio),
             nonce,
+            // Use gas parameters from the API response
+            gasPrice: swapDataTxInfo.gasPrice ?
+                BigInt(swapDataTxInfo.gasPrice) * BigInt(ratio) :
+                undefined,
+            maxPriorityFeePerGas: swapDataTxInfo.maxPriorityFeePerGas ?
+                BigInt(swapDataTxInfo.maxPriorityFeePerGas) * BigInt(ratio) :
+                undefined,
+            gas: swapDataTxInfo.gasLimit ?
+                BigInt(swapDataTxInfo.gasLimit) * BigInt(ratio) :
+                undefined
         };
 
+        // Handle any additional signature data if present
+        if (swapDataTxInfo.signatureData) {
+            signTransactionParams.signatureData = swapDataTxInfo.signatureData;
+        }
+
+        // Sign and send the transaction
         const { rawTransaction } = await web3.eth.accounts.signTransaction(
             signTransactionParams,
-            privateKey,
+            privateKey
         );
 
         return web3.eth.sendSignedTransaction(rawTransaction);
     } catch (error) {
         console.error("Cross-chain swap failed:", error);
-        throw error;
+        throw new Error(`Cross-chain swap failed: ${error.message}`);
     }
 }

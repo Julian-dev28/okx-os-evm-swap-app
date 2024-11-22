@@ -51,7 +51,11 @@ const CrossChainSwap = () => {
     };
 
     const renderQuoteDetails = () => {
-        if (!quoteData || !quoteData.data) return null;
+        if (!quoteData?.data?.[0]?.routerList?.[0]) {
+            console.log('Missing expected data structure:', quoteData);
+            return null;
+        }
+
         const quote = quoteData.data[0];
         const route = quote.routerList[0];
 
@@ -63,79 +67,106 @@ const CrossChainSwap = () => {
                     <div className="result-item">
                         <span className="result-key">From Chain:</span>
                         <span className="result-value">
-                            Avalanche (Chain ID: {quote.fromChainId})
+                            Avalanche (Chain ID: {quote?.fromChainId})
                         </span>
                     </div>
                     <div className="result-item">
                         <span className="result-key">To Chain:</span>
                         <span className="result-value">
-                            Ethereum (Chain ID: {quote.toChainId})
+                            Chain ID: {quote?.toChainId}
                         </span>
                     </div>
 
                     {/* Token Information */}
-                    <div className="result-item">
-                        <span className="result-key">You Pay:</span>
-                        <span className="result-value">
-                            {formatAmount(quote.fromTokenAmount)} {quote.fromToken.tokenSymbol}
-                        </span>
-                    </div>
-                    <div className="result-item">
-                        <span className="result-key">You Receive:</span>
-                        <span className="result-value">
-                            {formatAmount(route.toTokenAmount)} {quote.toToken.tokenSymbol}
-                        </span>
-                    </div>
+                    {quote?.fromToken && (
+                        <div className="result-item">
+                            <span className="result-key">You Pay:</span>
+                            <span className="result-value">
+                                {formatAmount(quote.fromTokenAmount)} {quote.fromToken.tokenSymbol}
+                            </span>
+                        </div>
+                    )}
+
+                    {quote?.toToken && (
+                        <div className="result-item">
+                            <span className="result-key">You Receive:</span>
+                            <span className="result-value">
+                                {formatAmount(route.toTokenAmount)} {quote.toToken.tokenSymbol}
+                            </span>
+                        </div>
+                    )}
 
                     {/* Bridge Details */}
-                    <div className="result-item">
-                        <span className="result-key">Bridge:</span>
-                        <span className="result-value">{route.router.bridgeName}</span>
-                    </div>
-                    <div className="result-item">
-                        <span className="result-key">Estimated Time:</span>
-                        <span className="result-value">{route.estimateTime} seconds</span>
-                    </div>
+                    {route?.router && (
+                        <>
+                            <div className="result-item">
+                                <span className="result-key">Bridge:</span>
+                                <span className="result-value">{route.router.bridgeName}</span>
+                            </div>
+                            {route.estimateTime && (
+                                <div className="result-item">
+                                    <span className="result-key">Estimated Time:</span>
+                                    <span className="result-value">{route.estimateTime} seconds</span>
+                                </div>
+                            )}
+                            {route.router.crossChainFee && (
+                                <div className="result-item">
+                                    <span className="result-key">Cross Chain Fee:</span>
+                                    <span className="result-value">{route.router.crossChainFee} USDC</span>
+                                </div>
+                            )}
+                        </>
+                    )}
 
-                    {/* Fee Information */}
-                    <div className="result-item">
-                        <span className="result-key">Cross Chain Fee:</span>
-                        <span className="result-value">{route.router.crossChainFee} USDC</span>
-                    </div>
-                    <div className="result-item">
-                        <span className="result-key">Source Network Fee:</span>
-                        <span className="result-value">{formatAmount(route.fromChainNetworkFee)} AVAX</span>
-                    </div>
-                    <div className="result-item">
-                        <span className="result-key">Destination Network Fee:</span>
-                        <span className="result-value">{formatAmount(route.toChainNetworkFee)} ETH</span>
-                    </div>
+                    {/* Network Fees */}
+                    {route?.fromChainNetworkFee && (
+                        <div className="result-item">
+                            <span className="result-key">Source Network Fee:</span>
+                            <span className="result-value">{formatAmount(route.fromChainNetworkFee)} AVAX</span>
+                        </div>
+                    )}
+
+                    {route?.toChainNetworkFee && (
+                        <div className="result-item">
+                            <span className="result-key">Destination Network Fee:</span>
+                            <span className="result-value">{formatAmount(route.toChainNetworkFee)}</span>
+                        </div>
+                    )}
 
                     {/* Minimum Received */}
-                    <div className="result-item">
-                        <span className="result-key">Minimum Received:</span>
-                        <span className="result-value">{formatAmount(route.minimumReceived)} ETH</span>
-                    </div>
+                    {route?.minimumReceived && (
+                        <div className="result-item">
+                            <span className="result-key">Minimum Received:</span>
+                            <span className="result-value">{formatAmount(route.minimumReceived)}</span>
+                        </div>
+                    )}
 
                     {/* Route Information */}
-                    <div className="result-item">
-                        <span className="result-key">Source Route:</span>
-                        <span className="result-value">
-                            AVAX → USDC ({route.fromDexRouterList[0].subRouterList[0].dexProtocol[0].dexName})
-                        </span>
-                    </div>
-                    <div className="result-item">
-                        <span className="result-key">Destination Route:</span>
-                        <span className="result-value">
-                            USDC → ETH ({route.toDexRouterList[0].subRouterList[0].dexProtocol[0].dexName})
-                        </span>
-                    </div>
+                    {route?.fromDexRouterList?.[0]?.subRouterList?.[0]?.dexProtocol?.[0] && (
+                        <div className="result-item">
+                            <span className="result-key">Source Route:</span>
+                            <span className="result-value">
+                                AVAX → USDC ({route.fromDexRouterList[0].subRouterList[0].dexProtocol[0].dexName})
+                            </span>
+                        </div>
+                    )}
+
+                    {route?.toDexRouterList?.[0]?.subRouterList?.[0]?.dexProtocol?.[0] && (
+                        <div className="result-item">
+                            <span className="result-key">Destination Route:</span>
+                            <span className="result-value">
+                                USDC → ETH ({route.toDexRouterList[0].subRouterList[0].dexProtocol[0].dexName})
+                            </span>
+                        </div>
+                    )}
 
                     {/* Gas Estimate */}
-                    <div className="result-item">
-                        <span className="result-key">Estimated Gas:</span>
-                        <span className="result-value">{formatAmount(route.estimateGasFee, 8)} AVAX</span>
-                    </div>
+                    {route?.estimateGasFee && (
+                        <div className="result-item">
+                            <span className="result-key">Estimated Gas:</span>
+                            <span className="result-value">{formatAmount(route.estimateGasFee, 8)} AVAX</span>
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -143,8 +174,7 @@ const CrossChainSwap = () => {
 
     return (
         <div className="quote-container">
-            <h2>AVAX → ETH Cross Chain Quote</h2>
-
+            <h2>AVAX → Linea ETH Cross Chain Quote</h2>
             <div className="input-container">
                 <label htmlFor="amount">Amount of AVAX:</label>
                 <input

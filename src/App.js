@@ -5,6 +5,7 @@ import AllowanceChecker from './components/allowanceChecker';
 import ApproveTransaction from './components/approveTransaction';
 import SwapTransaction from './components/swapTransaction';
 import SwapTransactionReverse from './components/swapTransactionReverse';
+import SwapTransactionCC from './components/swapCCTransaction';
 import './App.css';
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
       <AllowanceChecker />
       <ApproveTransaction />
       <SwapTransaction />
+      < SwapTransactionCC />
       {/* <SwapTransactionReverse /> */}
     </div>
   );
