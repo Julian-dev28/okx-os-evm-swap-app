@@ -1,59 +1,50 @@
-import Web3 from "web3";
-import cryptoJS from "crypto-js";
+import base58 from "bs58"; // Changed import
+const solanaWeb3 = require("@solana/web3.js");
+const { Connection } = require("@solana/web3.js");
+const cryptoJS = require("crypto-js");
 
-const lineaMainnet = "https://linea.blockpi.network/v1/rpc/public";
-const ethMainnet =
-    "https://eth-mainnet.g.alchemy.com/v2/I177iatNveGoBt3geurbwflbKjKh8bzq";
-const ethUSDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-const personalAddress = "0xd37268a16374d0a52c801c06a11ef32a35fcd2b9"; // Change to your personal address
-const foxyTokenAddress = "0x5FBDF89403270a1846F5ae7D113A989F850d1566";
-const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-const okxDexLinea = "0x57df6092665eb6058DE53939612413ff4B09114E";
-const lineaChainId = "59144";
+// Use a reliable RPC endpoint
+// const SOLANA_RPC_ENDPOINT =
+//     "https://solana-mainnet.g.alchemy.com/v2/hWHVoXxpR4XpLbjTf4cOKfEwXdgGlc7R";
+// // Or use one of these alternatives:
+// // const SOLANA_RPC_ENDPOINT = "https://solana-api.projectserum.com";
+// // const SOLANA_RPC_ENDPOINT = clusterApiUrl('mainnet-beta');
 
-const xlayerMainnet = "https://endpoints.omniatech.io/v1/xlayer/mainnet/public";
-const okxDexAddress = "0x8b773D83bc66Be128c60e07E17C8901f7a64F000";
-const xlayerChainId = "196";
-const xlayerUSDC = "0x74b7f16337b8972027f6196a17a631ac6de26d22";
-const wethAddress = "0x5a77f1443d16ee5761d310e38b62f77f726bc71c";
-const apiBaseUrl = "https://www.okx.com/api/v5/dex/aggregator";
+// // Connection configuration with proper options
+// const connection = new Connection(SOLANA_RPC_ENDPOINT, {
+//     commitment: "confirmed",
+//     confirmTransactionInitialTimeout: 30000,
+//     wsEndpoint: undefined, // Disable WebSocket
+//     disableRetryOnRateLimit: false,
+//     httpHeaders: {
+//         "Content-Type": "application/json",
+//         "X-API-Key": "hWHVoXxpR4XpLbjTf4cOKfEwXdgGlc7R",
+//     },
+// });
 
+const connection = new Connection("https://api.mainnet-beta.solana.com");
 // Environment variables
-// XLayer: 196 | XLayer Testnet: 195 | ETH Mainnet: 1 | ETH Sepolia: 11155111
-
-const web3 = new Web3(xlayerMainnet);
-export const chainId = xlayerChainId;
-export const toTokenAddress = baseTokenAddress;
-export const fromTokenAddress = wethAddress;
-export const ratio = BigInt(3) / BigInt(2);
-export const user = process.env.REACT_APP_USER_ADDRESS;
-export const fromAmount = "10";
-export const privateKey = process.env.REACT_APP_PRIVATE_KEY;
-export const spenderAddress = okxDexAddress;
-
 const apiKey = process.env.REACT_APP_API_KEY;
 const secretKey = process.env.REACT_APP_SECRET_KEY;
 const apiPassphrase = process.env.REACT_APP_API_PASSPHRASE;
+const projectId = process.env.REACT_APP_PROJECT_ID;
+export const userPrivateKey = process.env.REACT_APP_PRIVATE_KEY;
+export const userAddress = process.env.REACT_APP_USER_ADDRESS;
 
-// Helper function
-function getAggregatorRequestUrl(methodName, queryParams) {
-    return (
-        apiBaseUrl +
-        methodName +
-        "?" +
-        new URLSearchParams(queryParams).toString()
-    );
-}
+// Constants
+export const NATIVE_SOL = "11111111111111111111111111111111";
+export const WRAPPED_SOL = "So11111111111111111111111111111111111111112";
+export const USDC_SOL = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+export const ETH = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"; // "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270" WMATIC on Polygon
+export const SOLANA_CHAIN_ID = "501";
 
-// Quote-related functions
-function getQuoteHeaders(quoteParams) {
-    const date = new Date();
-    const timestamp = date.toISOString();
-    const stringToSign =
-        timestamp +
-        "GET" +
-        "/api/v5/dex/aggregator/quote?" +
-        new URLSearchParams(quoteParams).toString();
+// Base headers function
+function getHeaders(timestamp, method, requestPath, queryString = "") {
+    if (!apiKey || !secretKey || !apiPassphrase || !projectId) {
+        throw new Error("Missing required environment variables");
+    }
+
+    const stringToSign = timestamp + method + requestPath + queryString;
 
     return {
         "Content-Type": "application/json",
@@ -63,212 +54,457 @@ function getQuoteHeaders(quoteParams) {
         ),
         "OK-ACCESS-TIMESTAMP": timestamp,
         "OK-ACCESS-PASSPHRASE": apiPassphrase,
+        "OK-ACCESS-PROJECT": projectId,
     };
 }
 
+// Regular DEX quote function
 export async function getQuote(quoteParams) {
-    const apiRequestUrl = getAggregatorRequestUrl("/quote", quoteParams);
-    const headersParams = getQuoteHeaders(quoteParams);
-
-    const response = await fetch(apiRequestUrl, {
-        method: "GET",
-        headers: headersParams,
-    });
-
-    if (!response.ok) {
-        throw new Error("Network response was not ok");
+    if (
+        !quoteParams.amount ||
+        !quoteParams.fromTokenAddress ||
+        !quoteParams.toTokenAddress
+    ) {
+        throw new Error("Missing required parameters for quote");
     }
 
-    return response.json();
-}
+    const timestamp = new Date().toISOString();
+    const params = {
+        chainId: SOLANA_CHAIN_ID,
+        amount: quoteParams.amount,
+        fromTokenAddress: quoteParams.fromTokenAddress,
+        toTokenAddress: quoteParams.toTokenAddress,
+        slippage: quoteParams.slippage || "0.05",
+    };
 
-const tokenABI = [
-    {
-        constant: true,
-        inputs: [
-            {
-                name: "_owner",
-                type: "address",
-            },
-            {
-                name: "_spender",
-                type: "address",
-            },
-        ],
-        name: "allowance",
-        outputs: [
-            {
-                name: "",
-                type: "uint256",
-            },
-        ],
-        payable: false,
-        stateMutability: "view",
-        type: "function",
-    },
-];
+    const requestPath = "/api/v5/dex/aggregator/quote";
+    const queryString = new URLSearchParams(params).toString();
+    const headers = getHeaders(
+        timestamp,
+        "GET",
+        requestPath,
+        "?" + queryString,
+    );
 
-export async function getAllowance(ownerAddress, spenderAddress, tokenAddress) {
-    const tokenContract = new web3.eth.Contract(tokenABI, tokenAddress);
     try {
-        const allowance = await tokenContract.methods
-            .allowance(ownerAddress, spenderAddress)
-            .call();
-        return parseFloat(allowance);
+        const response = await fetch(
+            `https://www.okx.com${requestPath}?${queryString}`,
+            {
+                method: "GET",
+                headers: headers,
+            },
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to get quote: ${errorText}`);
+        }
+
+        const data = await response.json();
+        if (!data.data || data.data.length === 0) {
+            throw new Error("No quote data received");
+        }
+
+        return data;
     } catch (error) {
-        console.error("Failed to query allowance:", error);
+        console.error("Quote request failed:", error);
         throw error;
     }
 }
 
-// Approve-related functions
-function getApproveTransactionHeaders(params) {
-    const date = new Date();
-    const timestamp = date.toISOString();
-    const stringToSign =
-        timestamp +
-        "GET" +
-        "/api/v5/dex/aggregator/approve-transaction?" +
-        new URLSearchParams(params).toString();
-
-    return {
-        "Content-Type": "application/json",
-        "OK-ACCESS-KEY": apiKey,
-        "OK-ACCESS-SIGN": cryptoJS.enc.Base64.stringify(
-            cryptoJS.HmacSHA256(stringToSign, secretKey),
-        ),
-        "OK-ACCESS-TIMESTAMP": timestamp,
-        "OK-ACCESS-PASSPHRASE": apiPassphrase,
+// Liquidity check function
+export async function getLiquidity(params = {}) {
+    const timestamp = new Date().toISOString();
+    const liquidityParams = {
+        chainId: params.chainId || SOLANA_CHAIN_ID,
     };
-}
 
-export async function approveTransaction(
-    chainId,
-    tokenContractAddress,
-    approveAmount,
-) {
-    const params = { chainId, tokenContractAddress, approveAmount };
-    const apiRequestUrl = getAggregatorRequestUrl(
-        "/approve-transaction",
-        params,
+    const requestPath = "/api/v5/dex/aggregator/get-liquidity";
+    const queryString = new URLSearchParams(liquidityParams).toString();
+    const headers = getHeaders(
+        timestamp,
+        "GET",
+        requestPath,
+        "?" + queryString,
     );
-    const headersParams = getApproveTransactionHeaders(params);
 
-    const response = await fetch(apiRequestUrl, {
-        method: "GET",
-        headers: headersParams,
-    });
-
-    if (!response.ok) {
-        throw new Error("Network response was not ok");
-    }
-    return response.json();
-}
-export async function sendApproveTx(approveAmount) {
-    const allowanceAmount = await getAllowance(
-        user,
-        spenderAddress,
-        fromTokenAddress,
-    );
-    if (BigInt(allowanceAmount) < BigInt(approveAmount)) {
-        let gasPrice = await web3.eth.getGasPrice();
-        let nonce = await web3.eth.getTransactionCount(user);
-        const { data } = await approveTransaction(
-            chainId,
-            fromTokenAddress,
-            approveAmount,
+    try {
+        const response = await fetch(
+            `https://www.okx.com${requestPath}?${queryString}`,
+            {
+                method: "GET",
+                headers: headers,
+            },
         );
 
-        const txObject = {
-            nonce: nonce,
-            to: fromTokenAddress, // approve token address
-            gasLimit: BigInt(data[0].gasLimit) * BigInt(2), // avoid GasLimit too low
-            gasPrice: (BigInt(gasPrice) * BigInt(3)) / BigInt(2), // avoid GasPrice too low
-            data: data[0].data, // approve callData
-            value: "0", // approve value fix 0 since user is not sending any ETH or token
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to get liquidity: ${errorText}`);
+        }
+
+        const data = await response.json();
+        if (!data.data) {
+            throw new Error("Invalid liquidity response format");
+        }
+
+        return data;
+    } catch (error) {
+        console.error("Liquidity request failed:", error);
+        throw error;
+    }
+}
+
+// Helper function for DEX information
+export function getDexInfoById(liquiditySources, dexId) {
+    if (!Array.isArray(liquiditySources) || !dexId) {
+        console.warn("Invalid parameters for DEX info lookup");
+        return null;
+    }
+
+    return (
+        liquiditySources.find((source) => source.id === dexId.toString()) ||
+        null
+    );
+}
+
+export async function getCrossChainQuote(params) {
+    const quoteParams = {
+        fromChainId: params.fromChainId,
+        toChainId: params.toChainId,
+        fromTokenAddress: params.fromTokenAddress,
+        toTokenAddress: params.toTokenAddress,
+        amount: formatAmount(params.amount), // Format amount properly
+        slippage: params.slippage,
+        userWalletAddress: params.userWalletAddress,
+        priceImpactProtectionPercentage: params.priceImpactProtectionPercentage,
+    };
+
+    const timestamp = new Date().toISOString();
+    const requestPath = "/api/v5/dex/cross-chain/quote";
+    const queryString = new URLSearchParams(quoteParams).toString();
+    const headers = getHeaders(
+        timestamp,
+        "GET",
+        requestPath,
+        "?" + queryString,
+    );
+
+    try {
+        console.log("Quote request params:", quoteParams);
+
+        const response = await fetch(
+            `https://www.okx.com${requestPath}?${queryString}`,
+            {
+                method: "GET",
+                headers: headers,
+            },
+        );
+
+        const data = await response.json();
+        console.log("Quote response:", data);
+
+        if (data.code !== "0") {
+            throw new Error(`Quote error: ${data.msg} (Code: ${data.code})`);
+        }
+
+        return data;
+    } catch (error) {
+        console.error("Quote failed:", error);
+        throw error;
+    }
+}
+
+export async function sendCrossChainSwap(amount, userAddress) {
+    if (!apiKey || !secretKey || !apiPassphrase || !projectId) {
+        console.error("API credentials check:", {
+            hasApiKey: !!apiKey,
+            hasSecretKey: !!secretKey,
+            hasPassphrase: !!apiPassphrase,
+            hasProjectId: !!projectId,
+        });
+        throw new Error("Missing API credentials");
+    }
+
+    try {
+        // Validate and format amount
+        if (!amount) throw new Error("Amount is required");
+        console.log("Original amount:", amount);
+        const formattedAmount = formatAmount(amount);
+        console.log("Formatted amount:", formattedAmount);
+
+        // Basic parameters
+        const quoteParams = {
+            fromChainId: "501",
+            toChainId: "137",
+            fromTokenAddress: NATIVE_SOL,
+            toTokenAddress: ETH,
+            amount: formattedAmount,
+            slippage: ".5",
+            userWalletAddress: userAddress,
+            priceImpactProtectionPercentage: "1",
+            receiveAddress: "0x85032bb06a9e5c96e3a1bb5e2475719fd6d4796e",
+            sort: "0",
         };
-        const { rawTransaction } = await web3.eth.accounts.signTransaction(
-            txObject,
-            privateKey,
+
+        function generateHeaders(method, requestPath, queryString = "") {
+            const timestamp = new Date().toISOString();
+            // Remove the '?' if it exists at the start of queryString
+            const cleanQueryString = queryString.startsWith("?")
+                ? queryString.substring(1)
+                : queryString;
+            // Construct the sign string with the full path first
+            const signString =
+                timestamp +
+                method +
+                requestPath +
+                (cleanQueryString ? "?" + cleanQueryString : "");
+
+            console.log("Auth details:", {
+                timestamp,
+                method,
+                path: requestPath,
+                query: cleanQueryString,
+                signString,
+            });
+
+            const sign = cryptoJS
+                .HmacSHA256(signString, secretKey)
+                .toString(cryptoJS.enc.Base64);
+
+            return {
+                "Content-Type": "application/json",
+                "OK-ACCESS-KEY": apiKey,
+                "OK-ACCESS-SIGN": sign,
+                "OK-ACCESS-TIMESTAMP": timestamp,
+                "OK-ACCESS-PASSPHRASE": apiPassphrase,
+                "OK-ACCESS-PROJECT": projectId,
+            };
+        }
+        // Quote request
+        const quoteRequestPath = "/api/v5/dex/cross-chain/build-tx";
+        const quoteQueryString =
+            "?" + new URLSearchParams(quoteParams).toString();
+        const quoteHeaders = generateHeaders(
+            "GET",
+            quoteRequestPath,
+            quoteQueryString,
         );
-        return web3.eth.sendSignedTransaction(rawTransaction);
-    } else {
-        return null; // No approval needed
+
+        console.log("Making quote request...");
+        const quoteResponse = await fetch(
+            `https://www.okx.com${quoteRequestPath}${quoteQueryString}`,
+            {
+                method: "GET",
+                headers: quoteHeaders,
+            },
+        );
+
+        // Log response details
+        console.log("Quote response status:", quoteResponse.status);
+        const responseHeaders = {};
+        quoteResponse.headers.forEach((value, key) => {
+            responseHeaders[key] = value;
+        });
+        console.log("Quote response headers:", responseHeaders);
+
+        const quoteText = await quoteResponse.text();
+        console.log("Quote response text:", quoteText);
+
+        // Parse response
+        let quoteData;
+        try {
+            quoteData = JSON.parse(quoteText);
+        } catch (e) {
+            console.error("Failed to parse quote response:", e);
+            throw new Error("Invalid response format");
+        }
+
+        // Check response
+        if (quoteData.code !== "0") {
+            console.error("Quote error details:", quoteData);
+            throw new Error(
+                `Quote failed: ${quoteData.msg || "Unknown error"} (Code: ${quoteData.code})`,
+            );
+        }
+
+        // Change this check - the structure is different for cross-chain
+        if (!quoteData.data?.[0]?.router) {
+            // Changed from routerList to router
+            throw new Error("No valid routes found");
+        }
+
+        // Selected route - remove the routerList[0] access
+        const selectedRouter = quoteData.data[0].router; // Changed this line
+        console.log("Selected router:", selectedRouter);
+
+        // Build transaction parameters
+        const buildTxParams = {
+            ...quoteParams,
+            receiveAddress: "0x85032bb06a9e5c96e3a1bb5e2475719fd6d4796e",
+            routerId: selectedRouter.bridgeId, // Changed from routerId to bridgeId
+            bridgeId: selectedRouter.bridgeId,
+            router: selectedRouter.bridgeName, // Changed from router to bridgeName
+            sort: "0",
+        };
+
+        // Build TX request
+        const buildTxRequestPath = "/api/v5/dex/cross-chain/build-tx";
+        const buildTxQueryString =
+            "?" + new URLSearchParams(buildTxParams).toString();
+        const buildTxHeaders = generateHeaders(
+            "GET",
+            buildTxRequestPath,
+            buildTxQueryString,
+        );
+
+        console.log("Making build-tx request...");
+        const buildTxResponse = await fetch(
+            `https://www.okx.com${buildTxRequestPath}${buildTxQueryString}`,
+            {
+                method: "GET",
+                headers: buildTxHeaders,
+            },
+        );
+
+        const buildTxText = await buildTxResponse.text();
+        console.log("Build TX response:", buildTxText);
+
+        const buildTxData = JSON.parse(buildTxText);
+        if (buildTxData.code !== "0") {
+            throw new Error(
+                `API Error: ${buildTxData.msg || ""} (Code: ${buildTxData.code})`,
+            );
+        }
+
+        // Execute transaction
+        return await executeTransaction(buildTxData.data[0]);
+    } catch (error) {
+        console.error("Cross-chain swap failed:", error);
+        throw error;
     }
 }
 
-// Swap-related functions
-function getSwapHeaders(swapParams) {
-    const date = new Date();
-    const timestamp = date.toISOString();
-    const stringToSign =
-        timestamp +
-        "GET" +
-        "/api/v5/dex/aggregator/swap?" +
-        new URLSearchParams(swapParams).toString();
+// Updated amount formatting function
+function formatAmount(amount) {
+    try {
+        // Convert to string and handle scientific notation
+        const num = typeof amount === "string" ? amount : amount.toString();
 
-    return {
-        "Content-Type": "application/json",
-        "OK-PROJECT-ID": process.env.REACT_APP_PROJECT_ID,
-        "OK-ACCESS-KEY": apiKey,
-        "OK-ACCESS-SIGN": cryptoJS.enc.Base64.stringify(
-            cryptoJS.HmacSHA256(stringToSign, secretKey),
-        ),
-        "OK-ACCESS-TIMESTAMP": timestamp,
-        "OK-ACCESS-PASSPHRASE": apiPassphrase,
-    };
+        // Remove any non-numeric characters except decimal point
+        const cleaned = num.replace(/[^\d.]/g, "");
+
+        // Split on decimal and take whole part
+        const wholePart = cleaned.split(".")[0];
+
+        // Remove leading zeros but keep single zero
+        const formatted = wholePart.replace(/^0+(?=\d)/, "") || "0";
+
+        console.log("Amount formatting steps:", {
+            input: amount,
+            cleaned: cleaned,
+            formatted: formatted,
+        });
+
+        return formatted;
+    } catch (err) {
+        console.error("Amount formatting error:", err);
+        throw new Error(`Invalid amount format: ${amount}`);
+    }
 }
 
-export const getSwapData = async (swapParams) => {
-    const apiRequestUrl = getAggregatorRequestUrl("/swap", swapParams);
-    const headersParams = getSwapHeaders(swapParams);
-
-    const response = await fetch(apiRequestUrl, {
-        method: "GET",
-        headers: headersParams,
-    });
-
-    if (!response.ok) {
-        throw new Error("Network response was not ok");
+export async function executeTransaction(txData) {
+    if (!userPrivateKey) {
+        throw new Error("Private key not found");
     }
 
-    return response.json();
-};
+    // Add RPC fallback options
+    const rpcEndpoints = [
+        connection, // your primary connection
+        new solanaWeb3.Connection("https://api.mainnet-beta.solana.com"), // fallback public RPC
+        // Add more fallback RPCs as needed
+    ];
 
-export async function sendSwapTx(swapParams) {
-    const { data: swapData } = await getSwapData(swapParams);
-    console.log("swapData:", swapData);
+    let currentRPC = 0;
+    let recentBlockHash;
 
-    if (!swapData || swapData.length === 0 || !swapData[0].tx) {
-        throw new Error("Invalid swap data received");
+    // Try getting blockhash from different RPCs
+    while (currentRPC < rpcEndpoints.length) {
+        try {
+            recentBlockHash =
+                await rpcEndpoints[currentRPC].getLatestBlockhash();
+            break;
+        } catch (error) {
+            console.warn(`RPC ${currentRPC} failed:`, error);
+            currentRPC++;
+            if (currentRPC >= rpcEndpoints.length) {
+                throw new Error(
+                    "All RPC endpoints failed to get recent blockhash",
+                );
+            }
+        }
     }
+    console.log({ blockHash: recentBlockHash });
 
-    const swapDataTxInfo = swapData[0].tx;
-    const nonce = await web3.eth.getTransactionCount(user, "latest");
-    let signTransactionParams = {
-        data: swapDataTxInfo.data,
-        gasPrice: BigInt(swapDataTxInfo.gasPrice) * BigInt(ratio),
-        to: swapDataTxInfo.to,
-        value: swapDataTxInfo.value,
-        gas: BigInt(swapDataTxInfo.gas) * BigInt(ratio),
-        nonce,
-    };
+    try {
+        const transaction = base58.decode(txData.tx.data);
+        let tx;
 
-    const { rawTransaction } = await web3.eth.accounts.signTransaction(
-        signTransactionParams,
-        privateKey,
-    );
-    const chainTxInfo = await web3.eth.sendSignedTransaction(rawTransaction);
-    console.log("chainTxInfo:", chainTxInfo);
-    return chainTxInfo;
-}
+        try {
+            tx = solanaWeb3.Transaction.from(transaction);
+            console.log("Created legacy transaction");
+        } catch (error) {
+            tx = solanaWeb3.VersionedTransaction.deserialize(transaction);
+            console.log("Created versioned transaction");
+        }
 
-// Transaction signing and sending
-export async function sendSignedTransaction(txObject) {
-    const { rawTransaction } = await web3.eth.accounts.signTransaction(
-        txObject,
-        privateKey,
-    );
-    const result = await web3.eth.sendSignedTransaction(rawTransaction);
-    return result;
+        // Use the successful RPC connection
+        const connection = rpcEndpoints[currentRPC];
+
+        if (tx instanceof solanaWeb3.VersionedTransaction) {
+            tx.message.recentBlockhash = recentBlockHash.blockhash;
+        } else {
+            tx.recentBlockhash = recentBlockHash.blockhash;
+        }
+
+        const feePayer = solanaWeb3.Keypair.fromSecretKey(
+            base58.decode(userPrivateKey),
+        );
+
+        if (txData.tx.randomKeyAccount?.length > 0) {
+            console.log("Multi-signature transaction detected");
+        }
+
+        if (tx instanceof solanaWeb3.VersionedTransaction) {
+            tx.sign([feePayer]);
+        } else {
+            tx.partialSign(feePayer);
+        }
+
+        console.log("Transaction signed, sending...");
+        const txId = await connection.sendRawTransaction(tx.serialize(), {
+            skipPreflight: false,
+            preflightCommitment: "confirmed",
+        });
+
+        console.log("Transaction sent:", txId);
+        const confirmation = await connection.confirmTransaction(txId);
+
+        return {
+            success: true,
+            transactionId: txId,
+            explorerUrl: `https://solscan.io/tx/${txId}`,
+            confirmation,
+            bridgeInfo: txData.router
+                ? {
+                      id: txData.router.bridgeId,
+                      name: txData.router.bridgeName,
+                      fee: txData.router.crossChainFee,
+                      nativeFee: txData.router.otherNativeFee,
+                  }
+                : null,
+        };
+    } catch (error) {
+        console.error("Transaction execution failed:", error);
+        throw error;
+    }
 }

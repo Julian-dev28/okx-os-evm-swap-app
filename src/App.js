@@ -1,18 +1,23 @@
-import React from 'react';
-import RequestQuote from './components/requestQuote';
-import AllowanceChecker from './components/allowanceChecker';
-import ApproveTransaction from './components/approveTransaction';
-import SwapTransaction from './components/swapTransaction';
-import './App.css';
+import React from "react";
+import RequestQuote from "./components/requestQuote";
+import RequestLiquidity from "./components/requestLiquidity";
+import CrossChainQuote from "./components/crossChainSwapQuote";
+// import AllowanceChecker from './components/allowanceChecker';
+import ApproveTransaction from "./components/approveTransaction";
+import CrossChainSwapTransaction from "./components/swapTransaction";
+import SolanaSwapTransaction from "./components/solanaSwapTransaction";
+import "./App.css";
 
 function App() {
   return (
     <div className="App">
       <h1>OKX DEX Swap</h1>
       <RequestQuote />
-      <AllowanceChecker />
+      <CrossChainQuote />
+      <RequestLiquidity />
       <ApproveTransaction />
-      <SwapTransaction />
+      <CrossChainSwapTransaction />
+      <SolanaSwapTransaction />
     </div>
   );
 }
