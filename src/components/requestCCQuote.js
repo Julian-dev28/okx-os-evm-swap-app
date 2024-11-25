@@ -174,7 +174,7 @@ const CrossChainSwap = () => {
 
     return (
         <div className="quote-container">
-            <h2>AVAX → Linea ETH Cross Chain Quote</h2>
+            <h2>AVAX → POL Cross Chain Quote</h2>
             <div className="input-container">
                 <label htmlFor="amount">Amount of AVAX:</label>
                 <input

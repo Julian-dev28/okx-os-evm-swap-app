@@ -6,9 +6,9 @@ const okxDexAddress = "0x1daC23e41Fc8ce857E86fD8C1AE5b6121C67D96d";
 const targetChainId = "43114";
 export const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 export const wavaxTokenAddress = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
+const solTokenAddress = "11111111111111111111111111111111";
 const apiBaseUrl = "https://www.okx.com/api/v5/dex/aggregator";
-const RandomAddress = "0x85032bb06a9e5c96e3a1bb5e2475719fd6d4796e"
-
+const RandomAddress = "0x85032bb06a9e5c96e3a1bb5e2475719fd6d4796e";
 
 // Environment variables
 const web3 = new Web3(avalancheCMainnet);
@@ -123,7 +123,9 @@ function getApproveTransactionHeaders(params) {
 
     // Check if required environment variables are present
     if (!projectId || !apiKey || !secretKey || !apiPassphrase) {
-        throw new Error("Missing required environment variables for API authentication");
+        throw new Error(
+            "Missing required environment variables for API authentication",
+        );
     }
 
     return {
@@ -162,14 +164,22 @@ export async function approveTransaction(
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => null);
-            throw new Error(`API request failed: ${response.status} ${response.statusText}${errorData ? ` - ${JSON.stringify(errorData)}` : ''
-                }`);
+            throw new Error(
+                `API request failed: ${response.status} ${response.statusText}${
+                    errorData ? ` - ${JSON.stringify(errorData)}` : ""
+                }`,
+            );
         }
 
         const data = await response.json();
 
         // Validate the response data
-        if (!data || !data.data || !Array.isArray(data.data) || data.data.length === 0) {
+        if (
+            !data ||
+            !data.data ||
+            !Array.isArray(data.data) ||
+            data.data.length === 0
+        ) {
             throw new Error("Invalid response format from approval API");
         }
 
@@ -182,7 +192,10 @@ export async function approveTransaction(
 
 export async function sendApproveTx(approveAmount) {
     // First check if it's ETH/WAVAX
-    if (fromTokenAddress.toLowerCase() === "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE".toLowerCase()) {
+    if (
+        fromTokenAddress.toLowerCase() ===
+        "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE".toLowerCase()
+    ) {
         return null; // No approval needed for ETH
     }
 
@@ -290,7 +303,7 @@ export async function sendSwapTx(swapParams) {
         to: swapDataTxInfo.to,
         value: swapDataTxInfo.value,
         gas: BigInt(swapDataTxInfo.gas) * BigInt(ratio),
-        nonce
+        nonce,
     });
 
     let signTransactionParams = {
@@ -343,15 +356,17 @@ function getCrossChainQuoteHeaders(params) {
 
 export async function getCrossChainQuote(amount) {
     const quoteParams = {
-        fromChainId: targetChainId,  // Avalanche C-Chain
-        toChainId: 59144,    // 
+        fromChainId: targetChainId, // Avalanche C-Chain
+        toChainId: 137, //
         fromTokenAddress: baseTokenAddress, // Native AVAX
-        toTokenAddress: baseTokenAddress,   // Native ETH 
+        toTokenAddress: baseTokenAddress, // Native ETH
         amount: amount,
-        slippage: "0.01",      // 1% slippage
+        slippage: "0.01", // 1% slippage
     };
 
-    const apiRequestUrl = "https://www.okx.com/api/v5/dex/cross-chain/quote?" + new URLSearchParams(quoteParams).toString();
+    const apiRequestUrl =
+        "https://www.okx.com/api/v5/dex/cross-chain/quote?" +
+        new URLSearchParams(quoteParams).toString();
     const headersParams = getCrossChainQuoteHeaders(quoteParams);
 
     const response = await fetch(apiRequestUrl, {
@@ -392,18 +407,21 @@ function getCrossChainQuoteSwapHeaders(params) {
 export async function sendCrossChainSwap(amount) {
     const quoteParams = {
         fromChainId: targetChainId,
-        toChainId: 59144,
+        toChainId: 137,
         fromTokenAddress: baseTokenAddress,
         toTokenAddress: baseTokenAddress,
+        receiveAddress: "0x85032bb06a9e5c96e3a1bb5e2475719fd6d4796e",
         amount: amount,
-        slippage: "0.01",
+        slippage: "0.5",
         userWalletAddress: user,
         sort: 0,
+        priceImpactProtectionPercentage: "1.0",
     };
 
     try {
         // Make the direct API call for the swap data
-        const apiRequestUrl = "https://www.okx.com/api/v5/dex/cross-chain/build-tx?" +
+        const apiRequestUrl =
+            "https://www.okx.com/api/v5/dex/cross-chain/build-tx?" +
             new URLSearchParams(quoteParams).toString();
         const headersParams = getCrossChainQuoteSwapHeaders(quoteParams);
 
@@ -415,8 +433,15 @@ export async function sendCrossChainSwap(amount) {
         const swapData = await response.json();
 
         // Validate the response data
-        if (!swapData || !swapData.data || !swapData.data[0] || !swapData.data[0].tx) {
-            throw new Error("Invalid swap data received: " + JSON.stringify(swapData));
+        if (
+            !swapData ||
+            !swapData.data ||
+            !swapData.data[0] ||
+            !swapData.data[0].tx
+        ) {
+            throw new Error(
+                "Invalid swap data received: " + JSON.stringify(swapData),
+            );
         }
 
         const swapDataTxInfo = swapData.data[0].tx;
@@ -430,15 +455,15 @@ export async function sendCrossChainSwap(amount) {
             value: swapDataTxInfo.value,
             nonce,
             // Use gas parameters from the API response
-            gasPrice: swapDataTxInfo.gasPrice ?
-                BigInt(swapDataTxInfo.gasPrice) * BigInt(ratio) :
-                undefined,
-            maxPriorityFeePerGas: swapDataTxInfo.maxPriorityFeePerGas ?
-                BigInt(swapDataTxInfo.maxPriorityFeePerGas) * BigInt(ratio) :
-                undefined,
-            gas: swapDataTxInfo.gasLimit ?
-                BigInt(swapDataTxInfo.gasLimit) * BigInt(ratio) :
-                undefined
+            gasPrice: swapDataTxInfo.gasPrice
+                ? BigInt(swapDataTxInfo.gasPrice) * BigInt(ratio)
+                : undefined,
+            maxPriorityFeePerGas: swapDataTxInfo.maxPriorityFeePerGas
+                ? BigInt(swapDataTxInfo.maxPriorityFeePerGas) * BigInt(ratio)
+                : undefined,
+            gas: swapDataTxInfo.gasLimit
+                ? BigInt(swapDataTxInfo.gasLimit) * BigInt(ratio)
+                : undefined,
         };
 
         // Handle any additional signature data if present
@@ -449,7 +474,7 @@ export async function sendCrossChainSwap(amount) {
         // Sign and send the transaction
         const { rawTransaction } = await web3.eth.accounts.signTransaction(
             signTransactionParams,
-            privateKey
+            privateKey,
         );
 
         return web3.eth.sendSignedTransaction(rawTransaction);
