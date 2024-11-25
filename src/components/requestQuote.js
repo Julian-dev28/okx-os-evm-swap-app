@@ -17,7 +17,7 @@ const RequestQuote = () => {
   const [displayValue, setDisplayValue] = useState("");
   const [showQuoteDetails, setShowQuoteDetails] = useState(true);
   const [tokenSymbol, setTokenSymbol] = useState("");
-  const tokenDecimals = 6; // SOL decimals
+  const tokenDecimals = 9; // SOL decimals
 
   const handleAmountChange = (e) => {
     const input = e.target.value;
@@ -51,7 +51,7 @@ const RequestQuote = () => {
         amount: fromAmount,
         chainId: SOLANA_CHAIN_ID,
         fromTokenAddress: NATIVE_SOL,
-        toTokenAddress: ETH,
+        toTokenAddress: USDC_SOL,
         slippage: "0.05",
       };
       const result = await getQuote(quoteParams);
