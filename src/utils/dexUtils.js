@@ -2,7 +2,7 @@ import Web3 from "web3";
 import cryptoJS from "crypto-js";
 
 const avalancheCMainnet = "https://avalanche-c-chain-rpc.publicnode.com";
-const okxDexAddress = "0x1daC23e41Fc8ce857E86fD8C1AE5b6121C67D96d";
+const okxDexAddress = "0x40aA958dd87FC8305b97f2BA922CDdCa374bcD7f";
 const targetChainId = "43114";
 export const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 export const wavaxTokenAddress = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
@@ -13,8 +13,8 @@ const RandomAddress = "0x85032bb06a9e5c96e3a1bb5e2475719fd6d4796e";
 // Environment variables
 const web3 = new Web3(avalancheCMainnet);
 export const chainId = targetChainId;
-export const fromTokenAddress = baseTokenAddress;
-export const toTokenAddress = wavaxTokenAddress;
+export const fromTokenAddress = wavaxTokenAddress;
+export const toTokenAddress = baseTokenAddress;
 export const ratio = BigInt(3) / BigInt(2);
 export const user = process.env.REACT_APP_USER_ADDRESS;
 export const privateKey = process.env.REACT_APP_PRIVATE_KEY;
