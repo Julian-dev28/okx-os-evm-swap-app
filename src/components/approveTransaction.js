@@ -3,7 +3,7 @@ import BN from "bn.js";
 import {
     approveTransaction,
     chainId,
-    fromTokenAddress,
+    wavaxTokenAddress,
     sendApproveTx,
 } from "../utils/dexUtils";
 import "./theme.css";
@@ -43,7 +43,7 @@ const ApproveTransaction = () => {
             const amountInTokenUnits = convertToTokenUnits(amount);
             const approveResult = await approveTransaction(
                 chainId,
-                fromTokenAddress,
+                wavaxTokenAddress,
                 amountInTokenUnits,
             );
             const sendApprovalResult = await sendApproveTx(amountInTokenUnits);

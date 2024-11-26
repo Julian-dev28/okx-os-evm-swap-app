@@ -13,8 +13,8 @@ const RandomAddress = "0x85032bb06a9e5c96e3a1bb5e2475719fd6d4796e";
 // Environment variables
 const web3 = new Web3(avalancheCMainnet);
 export const chainId = targetChainId;
-export const fromTokenAddress = wavaxTokenAddress;
-export const toTokenAddress = baseTokenAddress;
+export const fromTokenAddress = baseTokenAddress;
+export const toTokenAddress = wavaxTokenAddress;
 export const ratio = BigInt(3) / BigInt(2);
 export const user = process.env.REACT_APP_USER_ADDRESS;
 export const privateKey = process.env.REACT_APP_PRIVATE_KEY;
@@ -165,8 +165,7 @@ export async function approveTransaction(
         if (!response.ok) {
             const errorData = await response.json().catch(() => null);
             throw new Error(
-                `API request failed: ${response.status} ${response.statusText}${
-                    errorData ? ` - ${JSON.stringify(errorData)}` : ""
+                `API request failed: ${response.status} ${response.statusText}${errorData ? ` - ${JSON.stringify(errorData)}` : ""
                 }`,
             );
         }
@@ -410,7 +409,7 @@ export async function sendCrossChainSwap(amount) {
         toChainId: 137,
         fromTokenAddress: baseTokenAddress,
         toTokenAddress: baseTokenAddress,
-        receiveAddress: "0x85032bb06a9e5c96e3a1bb5e2475719fd6d4796e",
+        receiveAddress: user,
         amount: amount,
         slippage: "0.5",
         userWalletAddress: user,
