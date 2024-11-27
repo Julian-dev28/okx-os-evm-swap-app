@@ -6,12 +6,13 @@ const okxDexAddress = "0x40aA958dd87FC8305b97f2BA922CDdCa374bcD7f";
 const targetChainId = "43114";
 export const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 export const wavaxTokenAddress = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
-const solTokenAddress = "11111111111111111111111111111111";
+
+// Initialize Web3 instance with Avalanche RPC
+const web3 = new Web3(avalancheCMainnet);
+// Base URL for API requests
 const apiBaseUrl = "https://www.okx.com/api/v5/dex/aggregator";
-const RandomAddress = "0x85032bb06a9e5c96e3a1bb5e2475719fd6d4796e";
 
 // Environment variables
-const web3 = new Web3(avalancheCMainnet);
 export const chainId = targetChainId;
 export const fromTokenAddress = baseTokenAddress;
 export const toTokenAddress = wavaxTokenAddress;
@@ -25,8 +26,13 @@ const secretKey = process.env.REACT_APP_SECRET_KEY;
 const apiPassphrase = process.env.REACT_APP_API_PASSPHRASE;
 const projectId = process.env.REACT_APP_PROJECT_ID;
 
-// Helper function
-function getAggregatorRequestUrl(methodName, queryParams) {
+/**
+ * Helper function for constructing API URLs
+ * @param {string} methodName - API endpoint path
+ * @param {Object} queryParams - URL parameters
+ * @returns {string} Complete API URL
+ */
+export function getAggregatorRequestUrl(methodName, queryParams) {
     return (
         apiBaseUrl +
         methodName +
@@ -35,8 +41,14 @@ function getAggregatorRequestUrl(methodName, queryParams) {
     );
 }
 
-// Quote-related functions
-function getQuoteHeaders(quoteParams) {
+/**
+ * Generates headers required for OKX DEX quote API calls
+ * Headers include timestamp, signature, and API credentials
+ *
+ * @param {Object} quoteParams - Parameters for the quote request
+ * @returns {Object} Headers object with required authentication
+ */
+export function getQuoteHeaders(quoteParams) {
     const date = new Date();
     const timestamp = date.toISOString();
     const stringToSign =
@@ -56,6 +68,13 @@ function getQuoteHeaders(quoteParams) {
     };
 }
 
+/**
+ * Fetches a quote from the OKX DEX Aggregator
+ * Used to get current prices and optimal swap routes
+ *
+ * @param {Object} quoteParams - Parameters including tokens, amount, and chain
+ * @returns {Promise<Object>} Quote data including price and route information
+ */
 export async function getQuote(quoteParams) {
     const apiRequestUrl = getAggregatorRequestUrl("/quote", quoteParams);
     const headersParams = getQuoteHeaders(quoteParams);
@@ -72,6 +91,9 @@ export async function getQuote(quoteParams) {
     return response.json();
 }
 
+// ABI for ERC20 token allowance function
+// This minimal ABI only includes the allowance function needed for checking token approvals
+// Full ERC20 ABI not needed since we're only checking allowances
 const tokenABI = [
     {
         constant: true,
@@ -98,6 +120,15 @@ const tokenABI = [
     },
 ];
 
+/**
+ * Checks the current allowance for a token
+ * Used to determine if approval is needed before swap
+ *
+ * @param {string} ownerAddress - Address of token owner
+ * @param {string} spenderAddress - Address of spender (DEX contract)
+ * @param {string} tokenAddress - Address of token contract
+ * @returns {Promise<number>} Current allowance amount
+ */
 export async function getAllowance(ownerAddress, spenderAddress, tokenAddress) {
     const tokenContract = new web3.eth.Contract(tokenABI, tokenAddress);
     try {
@@ -111,8 +142,14 @@ export async function getAllowance(ownerAddress, spenderAddress, tokenAddress) {
     }
 }
 
-// Approve-related functions
-function getApproveTransactionHeaders(params) {
+/**
+ * Generates headers required for OKX DEX approve transaction API calls
+ * Headers include timestamp, signature, and API credentials
+ *
+ * @param {Object} params - Parameters for the approve transaction
+ * @returns {Promise<Object>} Headers object with required authentication
+ */
+export function getApproveTransactionHeaders(params) {
     const date = new Date();
     const timestamp = date.toISOString();
     const stringToSign =
@@ -140,6 +177,14 @@ function getApproveTransactionHeaders(params) {
     };
 }
 
+/**
+ * Gets approval transaction data from the API
+ *
+ * @param {string} chainId - Network chain ID
+ * @param {string} tokenContractAddress - Token to approve
+ * @param {string} approveAmount - Amount to approve
+ * @returns {Promise<Object>} Approval transaction data
+ */
 export async function approveTransaction(
     chainId,
     tokenContractAddress,
@@ -165,7 +210,8 @@ export async function approveTransaction(
         if (!response.ok) {
             const errorData = await response.json().catch(() => null);
             throw new Error(
-                `API request failed: ${response.status} ${response.statusText}${errorData ? ` - ${JSON.stringify(errorData)}` : ""
+                `API request failed: ${response.status} ${response.statusText}${
+                    errorData ? ` - ${JSON.stringify(errorData)}` : ""
                 }`,
             );
         }
@@ -189,6 +235,13 @@ export async function approveTransaction(
     }
 }
 
+/**
+ * Handles the approval transaction if needed
+ * Checks current allowance and submits approval transaction if necessary
+ *
+ * @param {string} approveAmount - Amount to approve for spending
+ * @returns {Promise<Object|null>} Transaction receipt or null if approval not needed
+ */
 export async function sendApproveTx(approveAmount) {
     // First check if it's ETH/WAVAX
     if (
@@ -246,8 +299,12 @@ export async function sendApproveTx(approveAmount) {
     }
 }
 
-// Swap-related functions
-function getSwapHeaders(swapParams) {
+/**
+ * Helper function to get headers for swap API calls
+ * @param {Object} swapParams - Swap parameters
+ * @returns {Object} Headers with authentication
+ */
+export function getSwapHeaders(swapParams) {
     const date = new Date();
     const timestamp = date.toISOString();
     const stringToSign =
@@ -268,6 +325,11 @@ function getSwapHeaders(swapParams) {
     };
 }
 
+/**
+ * Helper function to get swap data from API
+ * @param {Object} swapParams - Swap parameters
+ * @returns {Promise<Object>} Swap transaction data
+ */
 export const getSwapData = async (swapParams) => {
     const apiRequestUrl = getAggregatorRequestUrl("/swap", swapParams);
     const headersParams = getSwapHeaders(swapParams);
@@ -284,6 +346,13 @@ export const getSwapData = async (swapParams) => {
     return response.json();
 };
 
+/**
+ * Executes a single-chain token swap
+ * Handles the main swap transaction after approval
+ *
+ * @param {Object} swapParams - Parameters for the swap
+ * @returns {Promise<Object>} Transaction receipt
+ */
 export async function sendSwapTx(swapParams) {
     const { data: swapData } = await getSwapData(swapParams);
     console.log("swapData:", swapData);
@@ -321,7 +390,12 @@ export async function sendSwapTx(swapParams) {
     return web3.eth.sendSignedTransaction(rawTransaction);
 }
 
-// Transaction signing and sending
+/**
+ * Signs and sends a transaction to the network
+ *
+ * @param {Object} txObject - Transaction parameters
+ * @returns {Promise<Object>} Transaction receipt
+ */
 export async function sendSignedTransaction(txObject) {
     const { rawTransaction } = await web3.eth.accounts.signTransaction(
         txObject,
@@ -331,8 +405,12 @@ export async function sendSignedTransaction(txObject) {
     return result;
 }
 
-// Cross-chain quote-related functions
-function getCrossChainQuoteHeaders(params) {
+/**
+ * Helper function to get headers for cross-chain quote API calls
+ * @param {Object} params - Quote parameters
+ * @returns {Object} Headers with authentication
+ */
+export function getCrossChainQuoteHeaders(params) {
     const date = new Date();
     const timestamp = date.toISOString();
     const stringToSign =
@@ -353,6 +431,13 @@ function getCrossChainQuoteHeaders(params) {
     };
 }
 
+/**
+ * Gets a quote for cross-chain swaps
+ * Used to estimate costs and routes across different networks
+ *
+ * @param {string} amount - Amount to swap
+ * @returns {Promise<Object>} Quote data for cross-chain swap
+ */
 export async function getCrossChainQuote(amount) {
     const quoteParams = {
         fromChainId: targetChainId, // Avalanche C-Chain
@@ -382,7 +467,12 @@ export async function getCrossChainQuote(amount) {
     return response.json();
 }
 
-function getCrossChainQuoteSwapHeaders(params) {
+/**
+ * Helper function to get headers for cross-chain swap API calls
+ * @param {Object} params - Swap parameters
+ * @returns {Object} Headers with authentication
+ */
+export function getCrossChainQuoteSwapHeaders(params) {
     const date = new Date();
     const timestamp = date.toISOString();
     const stringToSign =
@@ -403,6 +493,13 @@ function getCrossChainQuoteSwapHeaders(params) {
     };
 }
 
+/**
+ * Executes a cross-chain swap transaction
+ * Handles the complete cross-chain swap process
+ *
+ * @param {string} amount - Amount to swap
+ * @returns {Promise<Object>} Transaction receipt
+ */
 export async function sendCrossChainSwap(amount) {
     const quoteParams = {
         fromChainId: targetChainId,
