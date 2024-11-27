@@ -1,42 +1,38 @@
 import Web3 from "web3";
 import cryptoJS from "crypto-js";
 
-const lineaMainnet = "https://linea.blockpi.network/v1/rpc/public";
-const ethMainnet =
-    "https://eth-mainnet.g.alchemy.com/v2/I177iatNveGoBt3geurbwflbKjKh8bzq";
-const ethUSDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-const personalAddress = "0xd37268a16374d0a52c801c06a11ef32a35fcd2b9"; // Change to your personal address
-const foxyTokenAddress = "0x5FBDF89403270a1846F5ae7D113A989F850d1566";
-const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-const okxDexLinea = "0x57df6092665eb6058DE53939612413ff4B09114E";
-const lineaChainId = "59144";
+const avalancheCMainnet = "https://avalanche-c-chain-rpc.publicnode.com";
+const okxDexAddress = "0x40aA958dd87FC8305b97f2BA922CDdCa374bcD7f";
+const targetChainId = "43114";
+export const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+export const wavaxTokenAddress = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
 
-const xlayerMainnet = "https://endpoints.omniatech.io/v1/xlayer/mainnet/public";
-const okxDexAddress = "0x8b773D83bc66Be128c60e07E17C8901f7a64F000";
-const xlayerChainId = "196";
-const xlayerUSDC = "0x74b7f16337b8972027f6196a17a631ac6de26d22";
-const wethAddress = "0x5a77f1443d16ee5761d310e38b62f77f726bc71c";
+// Initialize Web3 instance with Avalanche RPC
+const web3 = new Web3(avalancheCMainnet);
+// Base URL for API requests
 const apiBaseUrl = "https://www.okx.com/api/v5/dex/aggregator";
 
 // Environment variables
-// XLayer: 196 | XLayer Testnet: 195 | ETH Mainnet: 1 | ETH Sepolia: 11155111
-
-const web3 = new Web3(xlayerMainnet);
-export const chainId = xlayerChainId;
-export const toTokenAddress = baseTokenAddress;
-export const fromTokenAddress = wethAddress;
+export const chainId = targetChainId;
+export const fromTokenAddress = baseTokenAddress;
+export const toTokenAddress = wavaxTokenAddress;
 export const ratio = BigInt(3) / BigInt(2);
 export const user = process.env.REACT_APP_USER_ADDRESS;
-export const fromAmount = "10";
 export const privateKey = process.env.REACT_APP_PRIVATE_KEY;
 export const spenderAddress = okxDexAddress;
 
 const apiKey = process.env.REACT_APP_API_KEY;
 const secretKey = process.env.REACT_APP_SECRET_KEY;
 const apiPassphrase = process.env.REACT_APP_API_PASSPHRASE;
+const projectId = process.env.REACT_APP_PROJECT_ID;
 
-// Helper function
-function getAggregatorRequestUrl(methodName, queryParams) {
+/**
+ * Helper function for constructing API URLs
+ * @param {string} methodName - API endpoint path
+ * @param {Object} queryParams - URL parameters
+ * @returns {string} Complete API URL
+ */
+export function getAggregatorRequestUrl(methodName, queryParams) {
     return (
         apiBaseUrl +
         methodName +
@@ -45,8 +41,14 @@ function getAggregatorRequestUrl(methodName, queryParams) {
     );
 }
 
-// Quote-related functions
-function getQuoteHeaders(quoteParams) {
+/**
+ * Generates headers required for OKX DEX quote API calls
+ * Headers include timestamp, signature, and API credentials
+ *
+ * @param {Object} quoteParams - Parameters for the quote request
+ * @returns {Object} Headers object with required authentication
+ */
+export function getQuoteHeaders(quoteParams) {
     const date = new Date();
     const timestamp = date.toISOString();
     const stringToSign =
@@ -66,6 +68,13 @@ function getQuoteHeaders(quoteParams) {
     };
 }
 
+/**
+ * Fetches a quote from the OKX DEX Aggregator
+ * Used to get current prices and optimal swap routes
+ *
+ * @param {Object} quoteParams - Parameters including tokens, amount, and chain
+ * @returns {Promise<Object>} Quote data including price and route information
+ */
 export async function getQuote(quoteParams) {
     const apiRequestUrl = getAggregatorRequestUrl("/quote", quoteParams);
     const headersParams = getQuoteHeaders(quoteParams);
@@ -82,6 +91,9 @@ export async function getQuote(quoteParams) {
     return response.json();
 }
 
+// ABI for ERC20 token allowance function
+// This minimal ABI only includes the allowance function needed for checking token approvals
+// Full ERC20 ABI not needed since we're only checking allowances
 const tokenABI = [
     {
         constant: true,
@@ -108,6 +120,15 @@ const tokenABI = [
     },
 ];
 
+/**
+ * Checks the current allowance for a token
+ * Used to determine if approval is needed before swap
+ *
+ * @param {string} ownerAddress - Address of token owner
+ * @param {string} spenderAddress - Address of spender (DEX contract)
+ * @param {string} tokenAddress - Address of token contract
+ * @returns {Promise<number>} Current allowance amount
+ */
 export async function getAllowance(ownerAddress, spenderAddress, tokenAddress) {
     const tokenContract = new web3.eth.Contract(tokenABI, tokenAddress);
     try {
@@ -121,8 +142,14 @@ export async function getAllowance(ownerAddress, spenderAddress, tokenAddress) {
     }
 }
 
-// Approve-related functions
-function getApproveTransactionHeaders(params) {
+/**
+ * Generates headers required for OKX DEX approve transaction API calls
+ * Headers include timestamp, signature, and API credentials
+ *
+ * @param {Object} params - Parameters for the approve transaction
+ * @returns {Promise<Object>} Headers object with required authentication
+ */
+export function getApproveTransactionHeaders(params) {
     const date = new Date();
     const timestamp = date.toISOString();
     const stringToSign =
@@ -131,8 +158,16 @@ function getApproveTransactionHeaders(params) {
         "/api/v5/dex/aggregator/approve-transaction?" +
         new URLSearchParams(params).toString();
 
+    // Check if required environment variables are present
+    if (!projectId || !apiKey || !secretKey || !apiPassphrase) {
+        throw new Error(
+            "Missing required environment variables for API authentication",
+        );
+    }
+
     return {
         "Content-Type": "application/json",
+        "OK-PROJECT-ID": projectId,
         "OK-ACCESS-KEY": apiKey,
         "OK-ACCESS-SIGN": cryptoJS.enc.Base64.stringify(
             cryptoJS.HmacSHA256(stringToSign, secretKey),
@@ -142,11 +177,23 @@ function getApproveTransactionHeaders(params) {
     };
 }
 
+/**
+ * Gets approval transaction data from the API
+ *
+ * @param {string} chainId - Network chain ID
+ * @param {string} tokenContractAddress - Token to approve
+ * @param {string} approveAmount - Amount to approve
+ * @returns {Promise<Object>} Approval transaction data
+ */
 export async function approveTransaction(
     chainId,
     tokenContractAddress,
     approveAmount,
 ) {
+    if (!chainId || !tokenContractAddress || !approveAmount) {
+        throw new Error("Missing required parameters for approval");
+    }
+
     const params = { chainId, tokenContractAddress, approveAmount };
     const apiRequestUrl = getAggregatorRequestUrl(
         "/approve-transaction",
@@ -154,51 +201,110 @@ export async function approveTransaction(
     );
     const headersParams = getApproveTransactionHeaders(params);
 
-    const response = await fetch(apiRequestUrl, {
-        method: "GET",
-        headers: headersParams,
-    });
+    try {
+        const response = await fetch(apiRequestUrl, {
+            method: "GET",
+            headers: headersParams,
+        });
 
-    if (!response.ok) {
-        throw new Error("Network response was not ok");
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(
+                `API request failed: ${response.status} ${response.statusText}${
+                    errorData ? ` - ${JSON.stringify(errorData)}` : ""
+                }`,
+            );
+        }
+
+        const data = await response.json();
+
+        // Validate the response data
+        if (
+            !data ||
+            !data.data ||
+            !Array.isArray(data.data) ||
+            data.data.length === 0
+        ) {
+            throw new Error("Invalid response format from approval API");
+        }
+
+        return data;
+    } catch (error) {
+        console.error("Approval request failed:", error);
+        throw error;
     }
-    return response.json();
 }
+
+/**
+ * Handles the approval transaction if needed
+ * Checks current allowance and submits approval transaction if necessary
+ *
+ * @param {string} approveAmount - Amount to approve for spending
+ * @returns {Promise<Object|null>} Transaction receipt or null if approval not needed
+ */
 export async function sendApproveTx(approveAmount) {
+    // First check if it's ETH/WAVAX
+    if (
+        fromTokenAddress.toLowerCase() ===
+        "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE".toLowerCase()
+    ) {
+        return null; // No approval needed for ETH
+    }
+
     const allowanceAmount = await getAllowance(
         user,
         spenderAddress,
         fromTokenAddress,
     );
+
     if (BigInt(allowanceAmount) < BigInt(approveAmount)) {
         let gasPrice = await web3.eth.getGasPrice();
         let nonce = await web3.eth.getTransactionCount(user);
-        const { data } = await approveTransaction(
-            chainId,
-            fromTokenAddress,
-            approveAmount,
-        );
 
-        const txObject = {
-            nonce: nonce,
-            to: fromTokenAddress, // approve token address
-            gasLimit: BigInt(data[0].gasLimit) * BigInt(2), // avoid GasLimit too low
-            gasPrice: (BigInt(gasPrice) * BigInt(3)) / BigInt(2), // avoid GasPrice too low
-            data: data[0].data, // approve callData
-            value: "0", // approve value fix 0 since user is not sending any ETH or token
-        };
-        const { rawTransaction } = await web3.eth.accounts.signTransaction(
-            txObject,
-            privateKey,
-        );
-        return web3.eth.sendSignedTransaction(rawTransaction);
+        try {
+            const approvalResult = await approveTransaction(
+                chainId,
+                fromTokenAddress,
+                approveAmount,
+            );
+
+            // Add error checking for the approval result
+            if (!approvalResult.data || !approvalResult.data[0]) {
+                throw new Error("Invalid approval data received");
+            }
+
+            const { data } = approvalResult;
+
+            const txObject = {
+                nonce: nonce,
+                to: fromTokenAddress,
+                gasLimit: BigInt(data[0].gasLimit) * BigInt(2),
+                gasPrice: (BigInt(gasPrice) * BigInt(3)) / BigInt(2),
+                data: data[0].data,
+                value: "0",
+            };
+
+            const { rawTransaction } = await web3.eth.accounts.signTransaction(
+                txObject,
+                privateKey,
+            );
+
+            return web3.eth.sendSignedTransaction(rawTransaction);
+        } catch (error) {
+            console.error("Approval transaction failed:", error);
+            throw new Error(`Approval failed: ${error.message}`);
+        }
     } else {
-        return null; // No approval needed
+        return null; // Sufficient allowance exists
     }
 }
 
-// Swap-related functions
-function getSwapHeaders(swapParams) {
+/**
+ * Helper function to get headers for swap API calls
+ * @param {Object} swapParams - Swap parameters
+ * @returns {Object} Headers with authentication
+ */
+export function getSwapHeaders(swapParams) {
     const date = new Date();
     const timestamp = date.toISOString();
     const stringToSign =
@@ -219,6 +325,11 @@ function getSwapHeaders(swapParams) {
     };
 }
 
+/**
+ * Helper function to get swap data from API
+ * @param {Object} swapParams - Swap parameters
+ * @returns {Promise<Object>} Swap transaction data
+ */
 export const getSwapData = async (swapParams) => {
     const apiRequestUrl = getAggregatorRequestUrl("/swap", swapParams);
     const headersParams = getSwapHeaders(swapParams);
@@ -235,6 +346,13 @@ export const getSwapData = async (swapParams) => {
     return response.json();
 };
 
+/**
+ * Executes a single-chain token swap
+ * Handles the main swap transaction after approval
+ *
+ * @param {Object} swapParams - Parameters for the swap
+ * @returns {Promise<Object>} Transaction receipt
+ */
 export async function sendSwapTx(swapParams) {
     const { data: swapData } = await getSwapData(swapParams);
     console.log("swapData:", swapData);
@@ -245,6 +363,17 @@ export async function sendSwapTx(swapParams) {
 
     const swapDataTxInfo = swapData[0].tx;
     const nonce = await web3.eth.getTransactionCount(user, "latest");
+
+    // Log the transaction parameters
+    console.log("Transaction parameters:", {
+        data: swapDataTxInfo.data,
+        gasPrice: BigInt(swapDataTxInfo.gasPrice) * BigInt(ratio),
+        to: swapDataTxInfo.to,
+        value: swapDataTxInfo.value,
+        gas: BigInt(swapDataTxInfo.gas) * BigInt(ratio),
+        nonce,
+    });
+
     let signTransactionParams = {
         data: swapDataTxInfo.data,
         gasPrice: BigInt(swapDataTxInfo.gasPrice) * BigInt(ratio),
@@ -258,12 +387,15 @@ export async function sendSwapTx(swapParams) {
         signTransactionParams,
         privateKey,
     );
-    const chainTxInfo = await web3.eth.sendSignedTransaction(rawTransaction);
-    console.log("chainTxInfo:", chainTxInfo);
-    return chainTxInfo;
+    return web3.eth.sendSignedTransaction(rawTransaction);
 }
 
-// Transaction signing and sending
+/**
+ * Signs and sends a transaction to the network
+ *
+ * @param {Object} txObject - Transaction parameters
+ * @returns {Promise<Object>} Transaction receipt
+ */
 export async function sendSignedTransaction(txObject) {
     const { rawTransaction } = await web3.eth.accounts.signTransaction(
         txObject,
@@ -271,4 +403,179 @@ export async function sendSignedTransaction(txObject) {
     );
     const result = await web3.eth.sendSignedTransaction(rawTransaction);
     return result;
+}
+
+/**
+ * Helper function to get headers for cross-chain quote API calls
+ * @param {Object} params - Quote parameters
+ * @returns {Object} Headers with authentication
+ */
+export function getCrossChainQuoteHeaders(params) {
+    const date = new Date();
+    const timestamp = date.toISOString();
+    const stringToSign =
+        timestamp +
+        "GET" +
+        "/api/v5/dex/cross-chain/quote?" +
+        new URLSearchParams(params).toString();
+
+    return {
+        "Content-Type": "application/json",
+        "OK-PROJECT-ID": projectId,
+        "OK-ACCESS-KEY": apiKey,
+        "OK-ACCESS-SIGN": cryptoJS.enc.Base64.stringify(
+            cryptoJS.HmacSHA256(stringToSign, secretKey),
+        ),
+        "OK-ACCESS-TIMESTAMP": timestamp,
+        "OK-ACCESS-PASSPHRASE": apiPassphrase,
+    };
+}
+
+/**
+ * Gets a quote for cross-chain swaps
+ * Used to estimate costs and routes across different networks
+ *
+ * @param {string} amount - Amount to swap
+ * @returns {Promise<Object>} Quote data for cross-chain swap
+ */
+export async function getCrossChainQuote(amount) {
+    const quoteParams = {
+        fromChainId: targetChainId, // Avalanche C-Chain
+        toChainId: 137, //
+        fromTokenAddress: baseTokenAddress, // Native AVAX
+        toTokenAddress: baseTokenAddress, // Native ETH
+        amount: amount,
+        slippage: "0.01", // 1% slippage
+    };
+
+    const apiRequestUrl =
+        "https://www.okx.com/api/v5/dex/cross-chain/quote?" +
+        new URLSearchParams(quoteParams).toString();
+    const headersParams = getCrossChainQuoteHeaders(quoteParams);
+
+    const response = await fetch(apiRequestUrl, {
+        method: "GET",
+        headers: headersParams,
+    });
+
+    console.log("response:", response);
+
+    if (!response.ok) {
+        throw new Error("Network response was not ok");
+    }
+
+    return response.json();
+}
+
+/**
+ * Helper function to get headers for cross-chain swap API calls
+ * @param {Object} params - Swap parameters
+ * @returns {Object} Headers with authentication
+ */
+export function getCrossChainQuoteSwapHeaders(params) {
+    const date = new Date();
+    const timestamp = date.toISOString();
+    const stringToSign =
+        timestamp +
+        "GET" +
+        "/api/v5/dex/cross-chain/build-tx?" +
+        new URLSearchParams(params).toString();
+
+    return {
+        "Content-Type": "application/json",
+        "OK-PROJECT-ID": projectId,
+        "OK-ACCESS-KEY": apiKey,
+        "OK-ACCESS-SIGN": cryptoJS.enc.Base64.stringify(
+            cryptoJS.HmacSHA256(stringToSign, secretKey),
+        ),
+        "OK-ACCESS-TIMESTAMP": timestamp,
+        "OK-ACCESS-PASSPHRASE": apiPassphrase,
+    };
+}
+
+/**
+ * Executes a cross-chain swap transaction
+ * Handles the complete cross-chain swap process
+ *
+ * @param {string} amount - Amount to swap
+ * @returns {Promise<Object>} Transaction receipt
+ */
+export async function sendCrossChainSwap(amount) {
+    const quoteParams = {
+        fromChainId: targetChainId,
+        toChainId: 137,
+        fromTokenAddress: baseTokenAddress,
+        toTokenAddress: baseTokenAddress,
+        receiveAddress: user,
+        amount: amount,
+        slippage: "0.5",
+        userWalletAddress: user,
+        sort: 0,
+        priceImpactProtectionPercentage: "1.0",
+    };
+
+    try {
+        // Make the direct API call for the swap data
+        const apiRequestUrl =
+            "https://www.okx.com/api/v5/dex/cross-chain/build-tx?" +
+            new URLSearchParams(quoteParams).toString();
+        const headersParams = getCrossChainQuoteSwapHeaders(quoteParams);
+
+        const response = await fetch(apiRequestUrl, {
+            method: "GET",
+            headers: headersParams,
+        });
+
+        const swapData = await response.json();
+
+        // Validate the response data
+        if (
+            !swapData ||
+            !swapData.data ||
+            !swapData.data[0] ||
+            !swapData.data[0].tx
+        ) {
+            throw new Error(
+                "Invalid swap data received: " + JSON.stringify(swapData),
+            );
+        }
+
+        const swapDataTxInfo = swapData.data[0].tx;
+        const nonce = await web3.eth.getTransactionCount(user, "latest");
+
+        // Prepare transaction parameters
+        let signTransactionParams = {
+            from: user,
+            data: swapDataTxInfo.data,
+            to: swapDataTxInfo.to,
+            value: swapDataTxInfo.value,
+            nonce,
+            // Use gas parameters from the API response
+            gasPrice: swapDataTxInfo.gasPrice
+                ? BigInt(swapDataTxInfo.gasPrice) * BigInt(ratio)
+                : undefined,
+            maxPriorityFeePerGas: swapDataTxInfo.maxPriorityFeePerGas
+                ? BigInt(swapDataTxInfo.maxPriorityFeePerGas) * BigInt(ratio)
+                : undefined,
+            gas: swapDataTxInfo.gasLimit
+                ? BigInt(swapDataTxInfo.gasLimit) * BigInt(ratio)
+                : undefined,
+        };
+
+        // Handle any additional signature data if present
+        if (swapDataTxInfo.signatureData) {
+            signTransactionParams.signatureData = swapDataTxInfo.signatureData;
+        }
+
+        // Sign and send the transaction
+        const { rawTransaction } = await web3.eth.accounts.signTransaction(
+            signTransactionParams,
+            privateKey,
+        );
+
+        return web3.eth.sendSignedTransaction(rawTransaction);
+    } catch (error) {
+        console.error("Cross-chain swap failed:", error);
+        throw new Error(`Cross-chain swap failed: ${error.message}`);
+    }
 }

@@ -1,19 +1,14 @@
-import React, { useState } from "react";
-import BN from "bn.js";
-import {
-    approveTransaction,
-    chainId,
-    wavaxTokenAddress,
-    sendApproveTx,
-} from "../utils/dexUtils";
-import "./theme.css";
+import React, { useState } from 'react';
+import BN from 'bn.js';
+import { approveTransaction, chainId, fromTokenAddress, sendApproveTx } from '../utils/dexUtils';
+import './theme.css';
 
 const ApproveTransaction = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [result, setResult] = useState(null);
     const [txHash, setTxHash] = useState(null);
-    const [amount, setAmount] = useState("");
+    const [amount, setAmount] = useState('');
     const tokenDecimals = 18; // Adjust this based on your token's decimals
 
     const handleAmountChange = (e) => {
@@ -24,35 +19,27 @@ const ApproveTransaction = () => {
     const convertToTokenUnits = (inputAmount) => {
         // Convert amount to token units using BN
         const [whole, decimal = ""] = inputAmount.split(".");
-        const decimals = decimal
-            .padEnd(tokenDecimals, "0")
-            .slice(0, tokenDecimals);
+        const decimals = decimal.padEnd(tokenDecimals, "0").slice(0, tokenDecimals);
         const amount = whole + decimals;
         return new BN(amount).toString();
     };
 
     const handleApprove = async () => {
         if (!amount) {
-            setError("Please enter an amount to approve");
+            setError('Please enter an amount to approve');
             return;
         }
 
         setLoading(true);
         setError(null);
         try {
-            const amountInTokenUnits = convertToTokenUnits(amount);
-            const approveResult = await approveTransaction(
-                chainId,
-                wavaxTokenAddress,
-                amountInTokenUnits,
-            );
+            const amountInTokenUnits = (amount);
+            const approveResult = await approveTransaction(chainId, fromTokenAddress, amountInTokenUnits);
             const sendApprovalResult = await sendApproveTx(amountInTokenUnits);
             setResult(approveResult);
-            setTxHash(
-                sendApprovalResult ? sendApprovalResult.transactionHash : null,
-            );
+            setTxHash(sendApprovalResult ? sendApprovalResult.transactionHash : null);
         } catch (err) {
-            setError("Failed to approve transaction");
+            setError('Failed to approve transaction');
             console.error(err);
         } finally {
             setLoading(false);
@@ -75,18 +62,9 @@ const ApproveTransaction = () => {
                         <div className="result-value">
                             {data.map((item, index) => (
                                 <div key={index} className="data-item">
-                                    <div>
-                                        <strong>dexContractAddress:</strong>{" "}
-                                        {item.dexContractAddress}
-                                    </div>
-                                    <div>
-                                        <strong>gasLimit:</strong>{" "}
-                                        {item.gasLimit}
-                                    </div>
-                                    <div>
-                                        <strong>gasPrice:</strong>{" "}
-                                        {item.gasPrice}
-                                    </div>
+                                    <div><strong>dexContractAddress:</strong> {item.dexContractAddress}</div>
+                                    <div><strong>gasLimit:</strong> {item.gasLimit}</div>
+                                    <div><strong>gasPrice:</strong> {item.gasPrice}</div>
                                 </div>
                             ))}
                         </div>
@@ -97,9 +75,7 @@ const ApproveTransaction = () => {
                     </div>
                     {txHash && (
                         <div className="result-item">
-                            <span className="result-key">
-                                Transaction Hash:
-                            </span>
+                            <span className="result-key">Transaction Hash:</span>
                             <span className="result-value">{txHash}</span>
                             <a
                                 href={`https://www.oklink.com/avax/tx/${txHash}`}
@@ -107,8 +83,7 @@ const ApproveTransaction = () => {
                                 rel="noopener noreferrer"
                                 className="tx-link"
                             >
-                                <br />
-                                View on Explorer
+                                <br />View on Explorer
                             </a>
                         </div>
                     )}
@@ -137,13 +112,7 @@ const ApproveTransaction = () => {
                 <p className="error-message">Error: {error}</p>
             ) : (
                 <>
-                    <button
-                        onClick={handleApprove}
-                        className="approve-button"
-                        disabled={!amount}
-                    >
-                        Approve
-                    </button>
+                    <button onClick={handleApprove} className="approve-button" disabled={!amount}>Approve</button>
                     {renderResult()}
                 </>
             )}

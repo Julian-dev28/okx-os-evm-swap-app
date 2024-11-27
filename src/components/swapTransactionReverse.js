@@ -50,7 +50,7 @@ const SwapTransaction = () => {
         setError(null);
     };
 
-    const handleSwap = async () => {
+    const handleReverseSwap = async () => {
         setLoading(true);
         setError(null);
         try {
@@ -63,8 +63,8 @@ const SwapTransaction = () => {
 
             const swapParams = {
                 chainId: chainId,
-                fromTokenAddress: fromTokenAddress,
-                toTokenAddress: toTokenAddress,
+                fromTokenAddress: toTokenAddress,
+                toTokenAddress: fromTokenAddress,
                 amount: amountInTokenUnits,
                 slippage: '0.5',
                 userWalletAddress: user
@@ -164,7 +164,7 @@ const SwapTransaction = () => {
 
     return (
         <div className="approve-transaction-container">
-            <h2>AVAX → WAVAX Swap (Single-Chain)</h2>
+            <h2>WAVAX → AVAX Swap</h2>
             <div className="input-container">
                 <label htmlFor="approveAmount">Enter amount to swap:</label>
                 <input
@@ -182,7 +182,7 @@ const SwapTransaction = () => {
                 <p className="error-message">Error: {error}</p>
             ) : (
                 <>
-                    <button onClick={handleSwap} className="approve-button" disabled={!amount}>
+                    <button onClick={handleReverseSwap} className="approve-button" disabled={!amount}>
                         Swap
                     </button>
                     {renderResult()}

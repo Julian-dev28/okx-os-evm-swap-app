@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import BN from 'bn.js';
-import { sendSwapTx, chainId, fromTokenAddress, toTokenAddress, user } from '../utils/dexUtils';
+import { sendSwapTx, sendCrossChainSwap, chainId, fromTokenAddress, toTokenAddress, user } from '../utils/dexUtils';
 import './theme.css';
 
-const SwapTransaction = () => {
+const SwapTransactionCC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [result, setResult] = useState(null);
@@ -61,16 +61,7 @@ const SwapTransaction = () => {
 
             const amountInTokenUnits = convertToTokenUnits(amount);
 
-            const swapParams = {
-                chainId: chainId,
-                fromTokenAddress: fromTokenAddress,
-                toTokenAddress: toTokenAddress,
-                amount: amountInTokenUnits,
-                slippage: '0.5',
-                userWalletAddress: user
-            };
-
-            const swapData = await sendSwapTx(swapParams);
+            const swapData = await sendCrossChainSwap(amountInTokenUnits);
             setResult(swapData);
             if (swapData.blockHash) {
                 setTxHash(swapData.transactionHash);
@@ -164,7 +155,7 @@ const SwapTransaction = () => {
 
     return (
         <div className="approve-transaction-container">
-            <h2>AVAX → WAVAX Swap (Single-Chain)</h2>
+            <h2>AVAX → POL Swap (Cross-Chain)</h2>
             <div className="input-container">
                 <label htmlFor="approveAmount">Enter amount to swap:</label>
                 <input
@@ -192,4 +183,4 @@ const SwapTransaction = () => {
     );
 };
 
-export default SwapTransaction;
+export default SwapTransactionCC;
