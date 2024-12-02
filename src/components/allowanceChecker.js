@@ -5,7 +5,7 @@ import {
     user,
     fromTokenAddress,
     spenderAddress,
-    wavaxTokenAddress
+    wethTokenAddress
 } from "../utils/dexUtils";
 import "./theme.css";
 
@@ -22,7 +22,7 @@ const AllowanceChecker = () => {
             const result = await getAllowance(
                 user,
                 spenderAddress,
-                wavaxTokenAddress,
+                wethTokenAddress,
             );
             console.log("Raw allowance (wei):", result);
             setAllowance(result);
@@ -83,7 +83,7 @@ const AllowanceChecker = () => {
             {error && <p className="error-message">Error: {error}</p>}
             {allowance !== null && (
                 <p className="allowance-value">
-                    {formatWeiToTokens(allowance)} {" "} WAVAX
+                    {formatWeiToTokens(allowance)} {" "} WETH
                 </p>
             )}
             <button

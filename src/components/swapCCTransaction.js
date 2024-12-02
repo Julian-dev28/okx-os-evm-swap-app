@@ -155,7 +155,7 @@ const SwapTransactionCC = () => {
 
     return (
         <div className="approve-transaction-container">
-            <h2>AVAX → POL Swap (Cross-Chain)</h2>
+            <h2>MNT → ETH Swap (Cross-Chain)</h2>
             <div className="input-container">
                 <label htmlFor="approveAmount">Enter amount to swap:</label>
                 <input

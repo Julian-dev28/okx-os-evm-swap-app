@@ -1,21 +1,22 @@
 import Web3 from "web3";
 import cryptoJS from "crypto-js";
 
-const avalancheCMainnet = "https://avalanche-c-chain-rpc.publicnode.com";
-const okxDexAddress = "0x40aA958dd87FC8305b97f2BA922CDdCa374bcD7f";
-const targetChainId = "43114";
+export const mantleMainnet = "https://rpc.mantle.xyz";
+export const okxDexAddress = "0x57df6092665eb6058DE53939612413ff4B09114E";
+export const fromChainId = "5000";
+export const toChainId = "8453";
 export const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-export const wavaxTokenAddress = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
+export const wethTokenAddress = "0xdEAddEaDdeadDEadDEADDEAddEADDEAddead1111";
 
 // Initialize Web3 instance with Avalanche RPC
-const web3 = new Web3(avalancheCMainnet);
+const web3 = new Web3(mantleMainnet);
 // Base URL for API requests
 const apiBaseUrl = "https://www.okx.com/api/v5/dex/aggregator";
 
 // Environment variables
-export const chainId = targetChainId;
+export const chainId = fromChainId;
 export const fromTokenAddress = baseTokenAddress;
-export const toTokenAddress = wavaxTokenAddress;
+export const toTokenAddress = wethTokenAddress;
 export const ratio = BigInt(3) / BigInt(2);
 export const user = process.env.REACT_APP_USER_ADDRESS;
 export const privateKey = process.env.REACT_APP_PRIVATE_KEY;
@@ -210,8 +211,7 @@ export async function approveTransaction(
         if (!response.ok) {
             const errorData = await response.json().catch(() => null);
             throw new Error(
-                `API request failed: ${response.status} ${response.statusText}${
-                    errorData ? ` - ${JSON.stringify(errorData)}` : ""
+                `API request failed: ${response.status} ${response.statusText}${errorData ? ` - ${JSON.stringify(errorData)}` : ""
                 }`,
             );
         }
@@ -243,7 +243,7 @@ export async function approveTransaction(
  * @returns {Promise<Object|null>} Transaction receipt or null if approval not needed
  */
 export async function sendApproveTx(approveAmount) {
-    // First check if it's ETH/WAVAX
+    // First check if it's ETH/WETH
     if (
         fromTokenAddress.toLowerCase() ===
         "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE".toLowerCase()
@@ -254,7 +254,7 @@ export async function sendApproveTx(approveAmount) {
     const allowanceAmount = await getAllowance(
         user,
         spenderAddress,
-        fromTokenAddress,
+        wethTokenAddress,
     );
 
     if (BigInt(allowanceAmount) < BigInt(approveAmount)) {
@@ -440,12 +440,16 @@ export function getCrossChainQuoteHeaders(params) {
  */
 export async function getCrossChainQuote(amount) {
     const quoteParams = {
-        fromChainId: targetChainId, // Avalanche C-Chain
-        toChainId: 137, //
-        fromTokenAddress: baseTokenAddress, // Native AVAX
-        toTokenAddress: baseTokenAddress, // Native ETH
+        fromChainId: fromChainId,
+        toChainId: toChainId,
+        fromTokenAddress: baseTokenAddress,
+        toTokenAddress: baseTokenAddress,
+        receiveAddress: user,
         amount: amount,
-        slippage: "0.01", // 1% slippage
+        slippage: "0.5",
+        userWalletAddress: user,
+        sort: 0,
+        priceImpactProtectionPercentage: "1.0",
     };
 
     const apiRequestUrl =
@@ -502,8 +506,8 @@ export function getCrossChainQuoteSwapHeaders(params) {
  */
 export async function sendCrossChainSwap(amount) {
     const quoteParams = {
-        fromChainId: targetChainId,
-        toChainId: 137,
+        fromChainId: fromChainId,
+        toChainId: toChainId,
         fromTokenAddress: baseTokenAddress,
         toTokenAddress: baseTokenAddress,
         receiveAddress: user,

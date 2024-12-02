@@ -14,8 +14,8 @@ function App() {
       <h1>OKX DEX API Demo</h1>
       <RequestQuote />
       <CrossChainSwap />
-      <AllowanceChecker />
-      <ApproveTransaction />
+      {/* <AllowanceChecker />
+      <ApproveTransaction /> */}
       <SwapTransaction />
       <SwapTransactionCC />
       {/* <SwapTransactionReverse /> */}

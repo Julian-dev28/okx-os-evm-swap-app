@@ -3,7 +3,7 @@ import BN from "bn.js";
 import {
     approveTransaction,
     chainId,
-    wavaxTokenAddress,
+    wethTokenAddress,
     sendApproveTx,
 } from "../utils/dexUtils";
 import "./theme.css";
@@ -43,7 +43,7 @@ const ApproveTransaction = () => {
             const amountInTokenUnits = convertToTokenUnits(amount);
             const approveResult = await approveTransaction(
                 chainId,
-                wavaxTokenAddress,
+                wethTokenAddress,
                 amountInTokenUnits,
             );
             const sendApprovalResult = await sendApproveTx(amountInTokenUnits);
@@ -119,7 +119,7 @@ const ApproveTransaction = () => {
 
     return (
         <div className="approve-transaction-container">
-            <h2>Approve WAVAX Spend</h2>
+            <h2>Approve WETH Spend</h2>
             <div className="input-container">
                 <label htmlFor="approveAmount">Enter amount to approve:</label>
                 <input

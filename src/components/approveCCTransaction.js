@@ -94,7 +94,7 @@ const ApproveTransaction = () => {
 
     return (
         <div className="approve-transaction-container">
-            <h2>Approve WAVAX Spend</h2>
+            <h2>Approve WETH Spend</h2>
             <div className="input-container">
                 <label htmlFor="approveAmount">Enter amount to approve:</label>
                 <input

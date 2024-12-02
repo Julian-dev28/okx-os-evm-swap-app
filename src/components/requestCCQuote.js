@@ -122,7 +122,7 @@ const CrossChainSwap = () => {
                     {route?.fromChainNetworkFee && (
                         <div className="result-item">
                             <span className="result-key">Source Network Fee:</span>
-                            <span className="result-value">{formatAmount(route.fromChainNetworkFee)} AVAX</span>
+                            <span className="result-value">{formatAmount(route.fromChainNetworkFee)} MNT</span>
                         </div>
                     )}
 
@@ -146,7 +146,7 @@ const CrossChainSwap = () => {
                         <div className="result-item">
                             <span className="result-key">Source Route:</span>
                             <span className="result-value">
-                                AVAX → USDC ({route.fromDexRouterList[0].subRouterList[0].dexProtocol[0].dexName})
+                                MNT → USDC ({route.fromDexRouterList[0].subRouterList[0].dexProtocol[0].dexName})
                             </span>
                         </div>
                     )}
@@ -164,7 +164,7 @@ const CrossChainSwap = () => {
                     {route?.estimateGasFee && (
                         <div className="result-item">
                             <span className="result-key">Estimated Gas:</span>
-                            <span className="result-value">{formatAmount(route.estimateGasFee, 8)} AVAX</span>
+                            <span className="result-value">{formatAmount(route.estimateGasFee, 8)} MNT</span>
                         </div>
                     )}
                 </div>
@@ -174,9 +174,9 @@ const CrossChainSwap = () => {
 
     return (
         <div className="quote-container">
-            <h2>AVAX → POL Cross Chain Quote</h2>
+            <h2>MNT → ETH Cross Chain Quote</h2>
             <div className="input-container">
-                <label htmlFor="amount">Amount of AVAX:</label>
+                <label htmlFor="amount">Amount of MNT:</label>
                 <input
                     type="number"
                     id="amount"
