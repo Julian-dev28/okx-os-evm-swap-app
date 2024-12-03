@@ -4,25 +4,11 @@ const { Connection } = require("@solana/web3.js");
 const cryptoJS = require("crypto-js");
 
 // Use a reliable RPC endpoint
-// const SOLANA_RPC_ENDPOINT =
-//     "https://solana-mainnet.g.alchemy.com/v2/hWHVoXxpR4XpLbjTf4cOKfEwXdgGlc7R";
-// // Or use one of these alternatives:
-// // const SOLANA_RPC_ENDPOINT = "https://solana-api.projectserum.com";
-// // const SOLANA_RPC_ENDPOINT = clusterApiUrl('mainnet-beta');
+export const connection = new Connection("https://mainnet.helius-rpc.com/?api-key=45f9798b-9483-4c10-87b6-47dcb952a345", {
+    confirmTransactionInitialTimeout: 10000,
+    wsEndpoint: "wss://mainnet.helius-rpc.com/?api-key=45f9798b-9483-4c10-87b6-47dcb952a345",
+});
 
-// // Connection configuration with proper options
-// const connection = new Connection(SOLANA_RPC_ENDPOINT, {
-//     commitment: "confirmed",
-//     confirmTransactionInitialTimeout: 30000,
-//     wsEndpoint: undefined, // Disable WebSocket
-//     disableRetryOnRateLimit: false,
-//     httpHeaders: {
-//         "Content-Type": "application/json",
-//         "X-API-Key": "hWHVoXxpR4XpLbjTf4cOKfEwXdgGlc7R",
-//     },
-// });
-
-const connection = new Connection("https://api.mainnet-beta.solana.com");
 // Environment variables
 const apiKey = process.env.REACT_APP_API_KEY;
 const secretKey = process.env.REACT_APP_SECRET_KEY;
@@ -216,200 +202,62 @@ export async function getCrossChainQuote(params) {
 
 export async function sendCrossChainSwap(amount, userAddress) {
     if (!apiKey || !secretKey || !apiPassphrase || !projectId) {
-        console.error("API credentials check:", {
-            hasApiKey: !!apiKey,
-            hasSecretKey: !!secretKey,
-            hasPassphrase: !!apiPassphrase,
-            hasProjectId: !!projectId,
-        });
         throw new Error("Missing API credentials");
     }
 
     try {
-        // Validate and format amount
-        if (!amount) throw new Error("Amount is required");
-        console.log("Original amount:", amount);
         const formattedAmount = formatAmount(amount);
-        console.log("Formatted amount:", formattedAmount);
 
-        // Basic parameters
         const quoteParams = {
             fromChainId: "501",
             toChainId: "137",
             fromTokenAddress: NATIVE_SOL,
             toTokenAddress: ETH,
             amount: formattedAmount,
-            slippage: ".5",
+            slippage: "0.5",
             userWalletAddress: userAddress,
-            priceImpactProtectionPercentage: "1",
-            receiveAddress: "0x85032bb06a9e5c96e3a1bb5e2475719fd6d4796e",
-            sort: "0",
+            priceImpactProtectionPercentage: "0.9",
+            receiveAddress: "0x9163756d2a83a334de2cc0c3aa1df9a5fc21369d",
+            sort: "1"
         };
 
-        function generateHeaders(method, requestPath, queryString = "") {
-            const timestamp = new Date().toISOString();
-            // Remove the '?' if it exists at the start of queryString
-            const cleanQueryString = queryString.startsWith("?")
-                ? queryString.substring(1)
-                : queryString;
-            // Construct the sign string with the full path first
-            const signString =
-                timestamp +
-                method +
-                requestPath +
-                (cleanQueryString ? "?" + cleanQueryString : "");
+        const timestamp = new Date().toISOString();
+        const requestPath = "/api/v5/dex/cross-chain/build-tx";
+        const queryString = "?" + new URLSearchParams(quoteParams).toString();
 
-            console.log("Auth details:", {
-                timestamp,
-                method,
-                path: requestPath,
-                query: cleanQueryString,
-                signString,
-            });
-
-            const sign = cryptoJS
-                .HmacSHA256(signString, secretKey)
-                .toString(cryptoJS.enc.Base64);
-
-            return {
-                "Content-Type": "application/json",
-                "OK-ACCESS-KEY": apiKey,
-                "OK-ACCESS-SIGN": sign,
-                "OK-ACCESS-TIMESTAMP": timestamp,
-                "OK-ACCESS-PASSPHRASE": apiPassphrase,
-                "OK-ACCESS-PROJECT": projectId,
-            };
-        }
-        // Quote request
-        const quoteRequestPath = "/api/v5/dex/cross-chain/build-tx";
-        const quoteQueryString =
-            "?" + new URLSearchParams(quoteParams).toString();
-        const quoteHeaders = generateHeaders(
-            "GET",
-            quoteRequestPath,
-            quoteQueryString,
-        );
-
-        console.log("Making quote request...");
-        const quoteResponse = await fetch(
-            `https://www.okx.com${quoteRequestPath}${quoteQueryString}`,
-            {
-                method: "GET",
-                headers: quoteHeaders,
-            },
-        );
-
-        // Log response details
-        console.log("Quote response status:", quoteResponse.status);
-        const responseHeaders = {};
-        quoteResponse.headers.forEach((value, key) => {
-            responseHeaders[key] = value;
-        });
-        console.log("Quote response headers:", responseHeaders);
-
-        const quoteText = await quoteResponse.text();
-        console.log("Quote response text:", quoteText);
-
-        // Parse response
-        let quoteData;
-        try {
-            quoteData = JSON.parse(quoteText);
-        } catch (e) {
-            console.error("Failed to parse quote response:", e);
-            throw new Error("Invalid response format");
-        }
-
-        // Check response
-        if (quoteData.code !== "0") {
-            console.error("Quote error details:", quoteData);
-            throw new Error(
-                `Quote failed: ${quoteData.msg || "Unknown error"} (Code: ${quoteData.code})`,
-            );
-        }
-
-        // Change this check - the structure is different for cross-chain
-        if (!quoteData.data?.[0]?.router) {
-            // Changed from routerList to router
-            throw new Error("No valid routes found");
-        }
-
-        // Selected route - remove the routerList[0] access
-        const selectedRouter = quoteData.data[0].router; // Changed this line
-        console.log("Selected router:", selectedRouter);
-
-        // Build transaction parameters
-        const buildTxParams = {
-            ...quoteParams,
-            receiveAddress: "0x85032bb06a9e5c96e3a1bb5e2475719fd6d4796e",
-            routerId: selectedRouter.bridgeId, // Changed from routerId to bridgeId
-            bridgeId: selectedRouter.bridgeId,
-            router: selectedRouter.bridgeName, // Changed from router to bridgeName
-            sort: "0",
+        const headers = {
+            "Content-Type": "application/json",
+            "OK-ACCESS-KEY": apiKey,
+            "OK-ACCESS-SIGN": cryptoJS.enc.Base64.stringify(
+                cryptoJS.HmacSHA256(timestamp + "GET" + requestPath + queryString, secretKey)
+            ),
+            "OK-ACCESS-TIMESTAMP": timestamp,
+            "OK-ACCESS-PASSPHRASE": apiPassphrase,
+            "OK-ACCESS-PROJECT": projectId,
         };
 
-        // Build TX request
-        const buildTxRequestPath = "/api/v5/dex/cross-chain/build-tx";
-        const buildTxQueryString =
-            "?" + new URLSearchParams(buildTxParams).toString();
-        const buildTxHeaders = generateHeaders(
-            "GET",
-            buildTxRequestPath,
-            buildTxQueryString,
+        const response = await fetch(
+            `https://www.okx.com${requestPath}${queryString}`,
+            { method: "GET", headers }
         );
 
-        console.log("Making build-tx request...");
-        const buildTxResponse = await fetch(
-            `https://www.okx.com${buildTxRequestPath}${buildTxQueryString}`,
-            {
-                method: "GET",
-                headers: buildTxHeaders,
-            },
-        );
-
-        const buildTxText = await buildTxResponse.text();
-        console.log("Build TX response:", buildTxText);
-
-        const buildTxData = JSON.parse(buildTxText);
-        if (buildTxData.code !== "0") {
-            throw new Error(
-                `API Error: ${buildTxData.msg || ""} (Code: ${buildTxData.code})`,
-            );
+        const data = await response.json();
+        if (data.code !== "0") {
+            throw new Error(`API Error: ${data.msg}`);
         }
 
-        // Execute transaction
-        return await executeTransaction(buildTxData.data[0]);
+        return await executeTransaction(data.data[0]);
     } catch (error) {
         console.error("Cross-chain swap failed:", error);
         throw error;
     }
 }
 
-// Updated amount formatting function
 function formatAmount(amount) {
-    try {
-        // Convert to string and handle scientific notation
-        const num = typeof amount === "string" ? amount : amount.toString();
-
-        // Remove any non-numeric characters except decimal point
-        const cleaned = num.replace(/[^\d.]/g, "");
-
-        // Split on decimal and take whole part
-        const wholePart = cleaned.split(".")[0];
-
-        // Remove leading zeros but keep single zero
-        const formatted = wholePart.replace(/^0+(?=\d)/, "") || "0";
-
-        console.log("Amount formatting steps:", {
-            input: amount,
-            cleaned: cleaned,
-            formatted: formatted,
-        });
-
-        return formatted;
-    } catch (err) {
-        console.error("Amount formatting error:", err);
-        throw new Error(`Invalid amount format: ${amount}`);
-    }
+    if (!amount) throw new Error("Amount is required");
+    const numStr = amount.toString().replace(/[^\d.]/g, "");
+    const wholePart = numStr.split(".")[0];
+    return wholePart.replace(/^0+(?=\d)/, "") || "0";
 }
 
 export async function executeTransaction(txData) {
@@ -417,91 +265,171 @@ export async function executeTransaction(txData) {
         throw new Error("Private key not found");
     }
 
-    // Add RPC fallback options
-    const rpcEndpoints = [
-        connection, // your primary connection
-        new solanaWeb3.Connection("https://api.mainnet-beta.solana.com"), // fallback public RPC
-        // Add more fallback RPCs as needed
-    ];
+    try {
+        console.log("Received txData:", txData);
 
-    let currentRPC = 0;
-    let recentBlockHash;
-
-    // Try getting blockhash from different RPCs
-    while (currentRPC < rpcEndpoints.length) {
-        try {
-            recentBlockHash =
-                await rpcEndpoints[currentRPC].getLatestBlockhash();
-            break;
-        } catch (error) {
-            console.warn(`RPC ${currentRPC} failed:`, error);
-            currentRPC++;
-            if (currentRPC >= rpcEndpoints.length) {
-                throw new Error(
-                    "All RPC endpoints failed to get recent blockhash",
-                );
-            }
+        // Check data structure
+        if (!txData || (!txData.tx && !txData.data)) {
+            console.error("Invalid txData structure:", txData);
+            throw new Error("Invalid txData structure");
         }
+
+        const transactionData = txData.tx?.data || txData.data;
+        console.log("Transaction data found:", transactionData);
+
+        if (!transactionData) {
+            console.error("Missing transaction data in structure:", txData);
+            throw new Error("Missing transaction data");
+        }
+
+        if (typeof transactionData !== 'string') {
+            console.error("Transaction data is not a string:", typeof transactionData);
+            throw new Error("Transaction data must be a string");
+        }
+
+        // Get fresh blockhash
+        const recentBlockHash = await connection.getLatestBlockhash();
+        console.log("Got blockhash:", recentBlockHash.blockhash);
+
+        try {
+            console.log("Attempting to decode transaction data:", transactionData);
+            const decodedTransaction = base58.decode(transactionData);
+            console.log("Decoded transaction successfully");
+
+            let tx;
+            try {
+                tx = solanaWeb3.VersionedTransaction.deserialize(decodedTransaction);
+                console.log("Successfully created versioned transaction");
+                tx.message.recentBlockhash = recentBlockHash.blockhash;
+            } catch (e) {
+                console.log("Versioned transaction failed, trying legacy:", e);
+                tx = solanaWeb3.Transaction.from(decodedTransaction);
+                console.log("Successfully created legacy transaction");
+                tx.recentBlockhash = recentBlockHash.blockhash;
+            }
+
+            const feePayer = solanaWeb3.Keypair.fromSecretKey(
+                base58.decode(userPrivateKey)
+            );
+            console.log("Created feePayer keypair");
+
+            if (tx instanceof solanaWeb3.VersionedTransaction) {
+                tx.sign([feePayer]);
+            } else {
+                tx.partialSign(feePayer);
+            }
+            console.log("Transaction signed");
+
+            const serialized = tx.serialize();
+            console.log("Transaction serialized");
+
+            const txId = await connection.sendRawTransaction(serialized, {
+                skipPreflight: true,
+                preflightCommitment: "finalized",
+                maxRetries: 5
+            });
+            console.log("Transaction sent, ID:", txId);
+
+            const confirmation = await connection.confirmTransaction({
+                signature: txId,
+                blockhash: recentBlockHash.blockhash,
+                lastValidBlockHeight: recentBlockHash.lastValidBlockHeight
+            }, 'finalized');
+            console.log("Transaction confirmed:", confirmation);
+
+            return {
+                success: true,
+                transactionId: txId,
+                explorerUrl: `https://solscan.io/tx/${txId}`,
+                confirmation
+            };
+        } catch (decodeError) {
+            console.error("Failed to decode/process transaction:", decodeError);
+            console.error("Raw transaction data:", transactionData);
+            throw new Error(`Transaction processing failed: ${decodeError.message}`);
+        }
+    } catch (error) {
+        console.error("Transaction execution failed:", error);
+        throw error;
     }
-    console.log({ blockHash: recentBlockHash });
+}
+
+
+// Handle the quote and transaction building
+export async function getSingleChainSwap(params) {
+    if (!apiKey || !secretKey || !apiPassphrase || !projectId) {
+        throw new Error("Missing API credentials");
+    }
 
     try {
-        const transaction = base58.decode(txData.tx.data);
-        let tx;
+        const timestamp = new Date().toISOString();
+        const requestPath = "/api/v5/dex/aggregator/swap";
+        const queryString = "?" + new URLSearchParams(params).toString();
 
-        try {
-            tx = solanaWeb3.Transaction.from(transaction);
-            console.log("Created legacy transaction");
-        } catch (error) {
-            tx = solanaWeb3.VersionedTransaction.deserialize(transaction);
-            console.log("Created versioned transaction");
-        }
+        const headers = {
+            "Content-Type": "application/json",
+            "OK-ACCESS-KEY": apiKey,
+            "OK-ACCESS-SIGN": cryptoJS.enc.Base64.stringify(
+                cryptoJS.HmacSHA256(timestamp + "GET" + requestPath + queryString, secretKey)
+            ),
+            "OK-ACCESS-TIMESTAMP": timestamp,
+            "OK-ACCESS-PASSPHRASE": apiPassphrase,
+            "OK-ACCESS-PROJECT": projectId,
+        };
 
-        // Use the successful RPC connection
-        const connection = rpcEndpoints[currentRPC];
-
-        if (tx instanceof solanaWeb3.VersionedTransaction) {
-            tx.message.recentBlockhash = recentBlockHash.blockhash;
-        } else {
-            tx.recentBlockhash = recentBlockHash.blockhash;
-        }
-
-        const feePayer = solanaWeb3.Keypair.fromSecretKey(
-            base58.decode(userPrivateKey),
+        const response = await fetch(
+            `https://www.okx.com${requestPath}${queryString}`,
+            { method: "GET", headers }
         );
 
-        if (txData.tx.randomKeyAccount?.length > 0) {
-            console.log("Multi-signature transaction detected");
+        const data = await response.json();
+        if (data.code !== "0") {
+            throw new Error(`API Error: ${data.msg}`);
         }
 
-        if (tx instanceof solanaWeb3.VersionedTransaction) {
-            tx.sign([feePayer]);
-        } else {
-            tx.partialSign(feePayer);
-        }
+        return data.data[0];
+    } catch (error) {
+        console.error("Failed to get swap quote:", error);
+        throw error;
+    }
+}
 
-        console.log("Transaction signed, sending...");
+// Execute the single chain swap transaction
+export async function executeSingleChainTransaction(txData) {
+    if (!userPrivateKey) {
+        throw new Error("Private key not found");
+    }
+
+    try {
+        // Get fresh blockhash
+        const recentBlockHash = await connection.getLatestBlockhash();
+
+        const decodedTransaction = base58.decode(txData.tx.data);
+        let tx = solanaWeb3.Transaction.from(decodedTransaction);
+        tx.recentBlockhash = recentBlockHash.blockhash;
+
+        const feePayer = solanaWeb3.Keypair.fromSecretKey(
+            base58.decode(userPrivateKey)
+        );
+
+        tx.sign(feePayer);
+
         const txId = await connection.sendRawTransaction(tx.serialize(), {
-            skipPreflight: false,
-            preflightCommitment: "confirmed",
+            skipPreflight: true,
+            maxRetries: 3
         });
 
-        console.log("Transaction sent:", txId);
-        const confirmation = await connection.confirmTransaction(txId);
+        const confirmation = await connection.confirmTransaction({
+            signature: txId,
+            blockhash: recentBlockHash.blockhash,
+            lastValidBlockHeight: recentBlockHash.lastValidBlockHeight
+        }, 'confirmed');
 
         return {
             success: true,
             transactionId: txId,
             explorerUrl: `https://solscan.io/tx/${txId}`,
-            confirmation,
-            bridgeInfo: txData.router
-                ? {
-                      id: txData.router.bridgeId,
-                      name: txData.router.bridgeName,
-                      fee: txData.router.crossChainFee,
-                      nativeFee: txData.router.otherNativeFee,
-                  }
-                : null,
+            confirmation
         };
     } catch (error) {
         console.error("Transaction execution failed:", error);

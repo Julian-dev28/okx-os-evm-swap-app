@@ -1,13 +1,13 @@
 import React, { useState, useCallback } from "react";
 import BN from "bn.js";
 import {
-    getQuote,
+    getSingleChainSwap,
     userAddress,
     SOLANA_CHAIN_ID,
     NATIVE_SOL,
     WRAPPED_SOL,
     USDC_SOL,
-    executeTransaction,
+    executeSingleChainTransaction,
     userPrivateKey,
 } from "../utils/dexUtils";
 
@@ -46,7 +46,7 @@ const SolanaSwapTransaction = () => {
         setToToken(e.target.value);
         setError(null);
     };
-
+    // Update your component's handleSwap function
     const handleSwap = async () => {
         try {
             setLoading(true);
@@ -59,41 +59,33 @@ const SolanaSwapTransaction = () => {
             const lamports = convertToLamports(amount);
             console.log("Amount in lamports:", lamports);
 
-            // Get quote with user wallet address
-            const quoteResult = await getQuote({
+            // Get swap quote
+            const quoteParams = {
                 chainId: SOLANA_CHAIN_ID,
                 amount: lamports,
                 fromTokenAddress: NATIVE_SOL,
                 toTokenAddress: toToken,
-                slippage: "0.05",
+                slippage: "0.01",
                 userWalletAddress: userAddress,
-            });
+            };
 
-            console.log("Quote result:", quoteResult);
+            const swapData = await getSingleChainSwap(quoteParams);
+            console.log("Swap data:", swapData);
 
-            if (!quoteResult?.data?.[0]) {
-                throw new Error("No quote data received");
-            }
-
-            const txData = quoteResult.data[0];
-            console.log("Transaction data:", txData);
-
-            // Execute the swap transaction
-            const swapResult = await executeTransaction(txData);
+            // Execute the swap
+            const swapResult = await executeSingleChainTransaction(swapData);
             console.log("Swap result:", swapResult);
 
             setTxHash(swapResult.transactionId);
             setResult({
                 inputAmount: amount,
-                outputAmount: (parseFloat(txData.toTokenAmount) / 1e9).toFixed(
-                    6,
-                ),
+                outputAmount: (parseFloat(swapData.toTokenAmount) / 1e9).toFixed(6),
                 txHash: swapResult.transactionId,
                 explorerUrl: swapResult.explorerUrl,
                 confirmation: swapResult.confirmation,
             });
         } catch (error) {
-            console.error("Swap error:", error);
+            console.error("Swap failed:", error);
             setError(error.message);
         } finally {
             setLoading(false);
