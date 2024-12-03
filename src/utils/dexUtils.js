@@ -8,7 +8,7 @@ export const toChainId = "8453";
 export const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 export const wethTokenAddress = "0xdEAddEaDdeadDEadDEADDEAddEADDEAddead1111";
 
-// Initialize Web3 instance with Avalanche RPC
+// Initialize Web3 instance with RPC
 const web3 = new Web3(mantleMainnet);
 // Base URL for API requests
 const apiBaseUrl = "https://www.okx.com/api/v5/dex/aggregator";
