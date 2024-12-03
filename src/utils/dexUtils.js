@@ -4,6 +4,7 @@ import cryptoJS from "crypto-js";
 export const mantleMainnet = "https://rpc.mantle.xyz";
 export const okxDexAddress = "0x57df6092665eb6058DE53939612413ff4B09114E";
 export const fromChainId = "5000";
+export const fromChainName = "Mantle"
 export const toChainId = "8453";
 export const baseTokenAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 export const wethTokenAddress = "0xdEAddEaDdeadDEadDEADDEAddEADDEAddead1111";

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { getCrossChainQuote } from "../utils/dexUtils";
+import { getCrossChainQuote, fromChainName } from "../utils/dexUtils";
 import "./theme.css";
 
 const CrossChainSwap = () => {
@@ -67,7 +67,7 @@ const CrossChainSwap = () => {
                     <div className="result-item">
                         <span className="result-key">From Chain:</span>
                         <span className="result-value">
-                            Avalanche (Chain ID: {quote?.fromChainId})
+                            {fromChainName} (Chain ID: {quote?.fromChainId})
                         </span>
                     </div>
                     <div className="result-item">
