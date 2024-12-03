@@ -65,7 +65,7 @@ const SolanaSwapTransaction = () => {
                 amount: lamports,
                 fromTokenAddress: NATIVE_SOL,
                 toTokenAddress: toToken,
-                slippage: "0.01",
+                slippage: "0.5",
                 userWalletAddress: userAddress,
             };
 

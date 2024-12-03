@@ -4,8 +4,9 @@ const { Connection } = require("@solana/web3.js");
 const cryptoJS = require("crypto-js");
 
 // Use a reliable RPC endpoint
+// mainnet.helius-rpc.com/?api-key=45f9798b-9483-4c10-87b6-47dcb952a345
 export const connection = new Connection("https://mainnet.helius-rpc.com/?api-key=45f9798b-9483-4c10-87b6-47dcb952a345", {
-    confirmTransactionInitialTimeout: 10000,
+    confirmTransactionInitialTimeout: 5000,
     wsEndpoint: "wss://mainnet.helius-rpc.com/?api-key=45f9798b-9483-4c10-87b6-47dcb952a345",
 });
 
@@ -166,7 +167,7 @@ export async function getCrossChainQuote(params) {
     };
 
     const timestamp = new Date().toISOString();
-    const requestPath = "/api/v5/dex/cross-chain/quote";
+    const requestPath = "/api/v5/dex/cross-chain/build-tx";
     const queryString = new URLSearchParams(quoteParams).toString();
     const headers = getHeaders(
         timestamp,
@@ -325,8 +326,6 @@ export async function executeTransaction(txData) {
 
             const txId = await connection.sendRawTransaction(serialized, {
                 skipPreflight: true,
-                preflightCommitment: "finalized",
-                maxRetries: 5
             });
             console.log("Transaction sent, ID:", txId);
 
@@ -394,7 +393,6 @@ export async function getSingleChainSwap(params) {
     }
 }
 
-// Execute the single chain swap transaction
 export async function executeSingleChainTransaction(txData) {
     if (!userPrivateKey) {
         throw new Error("Private key not found");
@@ -402,28 +400,59 @@ export async function executeSingleChainTransaction(txData) {
 
     try {
         // Get fresh blockhash
-        const recentBlockHash = await connection.getLatestBlockhash();
+        const recentBlockHash = await connection.getLatestBlockhash('processed');
 
+        // Create and process transaction
         const decodedTransaction = base58.decode(txData.tx.data);
-        let tx = solanaWeb3.Transaction.from(decodedTransaction);
+        const tx = solanaWeb3.Transaction.from(decodedTransaction);
         tx.recentBlockhash = recentBlockHash.blockhash;
 
         const feePayer = solanaWeb3.Keypair.fromSecretKey(
             base58.decode(userPrivateKey)
         );
 
-        tx.sign(feePayer);
+        tx.partialSign(feePayer);
 
-        const txId = await connection.sendRawTransaction(tx.serialize(), {
-            skipPreflight: true,
-            maxRetries: 3
-        });
+        // Send with retries if needed
+        let txId;
+        try {
+            txId = await connection.sendRawTransaction(tx.serialize(), {
+                skipPreflight: true,
+                maxRetries: 3
+            });
+        } catch (sendError) {
+            console.error("Failed to send transaction:", sendError);
+            throw new Error("Failed to send transaction. Please try again.");
+        }
 
-        const confirmation = await connection.confirmTransaction({
-            signature: txId,
-            blockhash: recentBlockHash.blockhash,
-            lastValidBlockHeight: recentBlockHash.lastValidBlockHeight
-        }, 'confirmed');
+        // Wait for confirmation with multiple attempts
+        let confirmation;
+        for (let i = 0; i < 3; i++) {
+            try {
+                confirmation = await connection.confirmTransaction({
+                    signature: txId,
+                    blockhash: recentBlockHash.blockhash,
+                    lastValidBlockHeight: recentBlockHash.lastValidBlockHeight
+                }, 'processed');
+
+                if (confirmation?.value?.err) {
+                    throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+                }
+
+                break;
+            } catch (confirmError) {
+                if (i === 2) {
+                    // Check if transaction exists even if confirmation timed out
+                    const status = await connection.getSignatureStatus(txId);
+                    if (status?.value?.confirmationStatus) {
+                        confirmation = { value: status.value };
+                        break;
+                    }
+                    throw new Error("Transaction could not be confirmed. Please check explorer.");
+                }
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
 
         return {
             success: true,
