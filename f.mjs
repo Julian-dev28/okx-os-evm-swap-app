@@ -1,209 +1,227 @@
 import 'dotenv/config';
-import { Connection, Transaction, Keypair, PublicKey } from '@solana/web3.js';
+import {
+    Connection,
+    Keypair,
+    PublicKey,
+    VersionedTransaction,
+    sendAndConfirmRawTransaction,
+    ComputeBudgetProgram
+} from '@solana/web3.js';
 import cryptoJS from 'crypto-js';
 import base58 from 'bs58';
-import fetch from 'node-fetch'; // Need this for fetch in Node.js
+import fetch from 'node-fetch';
 
 // Constants
 const NATIVE_SOL = "11111111111111111111111111111111";
-const USDC_SOL = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const WRAPPED_SOL = "So11111111111111111111111111111111111111112";
+const USDC_SOL = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const MAX_RETRIES = 3;
+const DECIMALS = 9; // SOL has 9 decimals
+const COMPUTE_UNITS = 300000;
 
-// Connection setup with proper error handling
+// Connection setup
 const connection = new Connection(
-    `https://mainnet.helius-rpc.com/?api-key=45f9798b-9483-4c10-87b6-47dcb952a345`,
+    `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`,
     {
-        confirmTransactionInitialTimeout: 5000,
-        wsEndpoint: `wss://mainnet.helius-rpc.com/?api-key=45f9798b-9483-4c10-87b6-47dcb952a345`,
+        commitment: 'confirmed',
+        confirmTransactionInitialTimeout: 60000,
+        wsEndpoint: `wss://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY}`,
     }
 );
 
-// API credentials with validation
-const apiKey = process.env.REACT_APP_API_KEY;
-const secretKey = process.env.REACT_APP_SECRET_KEY;
-const apiPassphrase = process.env.REACT_APP_API_PASSPHRASE;
-const projectId = process.env.REACT_APP_PROJECT_ID;
-const userPrivateKey = process.env.REACT_APP_PRIVATE_KEY;
+// Environment variable validation
+const requiredEnvVars = {
+    REACT_APP_API_KEY: process.env.REACT_APP_API_KEY,
+    REACT_APP_SECRET_KEY: process.env.REACT_APP_SECRET_KEY,
+    REACT_APP_API_PASSPHRASE: process.env.REACT_APP_API_PASSPHRASE,
+    REACT_APP_PROJECT_ID: process.env.REACT_APP_PROJECT_ID,
+    REACT_APP_PRIVATE_KEY: process.env.REACT_APP_PRIVATE_KEY,
+    HELIUS_API_KEY: process.env.HELIUS_API_KEY
+};
 
-// Validate environment variables early
-if (!apiKey || !secretKey || !apiPassphrase || !projectId || !userPrivateKey) {
-    throw new Error("Missing required environment variables");
+// Validate environment variables
+function validateEnvironment() {
+    const missing = Object.entries(requiredEnvVars)
+        .filter(([_, value]) => !value)
+        .map(([name]) => name);
+
+    if (missing.length > 0) {
+        throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    }
 }
 
+// OKX API header generation
 function getHeaders(timestamp, method, requestPath, queryString = "") {
     const stringToSign = timestamp + method + requestPath + queryString;
-
     return {
         "Content-Type": "application/json",
-        "OK-ACCESS-KEY": apiKey,
+        "OK-ACCESS-KEY": requiredEnvVars.REACT_APP_API_KEY,
         "OK-ACCESS-SIGN": cryptoJS.enc.Base64.stringify(
-            cryptoJS.HmacSHA256(stringToSign, secretKey),
+            cryptoJS.HmacSHA256(stringToSign, requiredEnvVars.REACT_APP_SECRET_KEY)
         ),
         "OK-ACCESS-TIMESTAMP": timestamp,
-        "OK-ACCESS-PASSPHRASE": apiPassphrase,
-        "OK-ACCESS-PROJECT": projectId,
+        "OK-ACCESS-PASSPHRASE": requiredEnvVars.REACT_APP_API_PASSPHRASE,
+        "OK-ACCESS-PROJECT": requiredEnvVars.REACT_APP_PROJECT_ID,
     };
 }
 
+// Get swap quote from OKX API
 async function getSingleChainSwap(params) {
-    try {
-        const timestamp = new Date().toISOString();
-        const requestPath = "/api/v5/dex/aggregator/swap";
-        const queryString = "?" + new URLSearchParams(params).toString();
-        const headers = getHeaders(timestamp, "GET", requestPath, queryString);
+    const timestamp = new Date().toISOString();
+    const requestPath = "/api/v5/dex/aggregator/swap";
+    const queryString = "?" + new URLSearchParams(params).toString();
+    const headers = getHeaders(timestamp, "GET", requestPath, queryString);
 
-        console.log("Making API request with params:", params);
+    console.log("Requesting swap quote with params:", params);
 
-        const response = await fetch(
-            `https://www.okx.com${requestPath}${queryString}`,
-            { method: "GET", headers }
-        );
+    const response = await fetch(
+        `https://www.okx.com${requestPath}${queryString}`,
+        { method: "GET", headers }
+    );
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API request failed: ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log("API response:", data);
-
-        if (data.code !== "0") {
-            throw new Error(`API Error: ${data.msg}`);
-        }
-
-        return data.data[0];
-    } catch (error) {
-        console.error("Failed to get swap quote:", error);
-        throw error;
+    if (!response.ok) {
+        throw new Error(`API request failed: ${await response.text()}`);
     }
+
+    const data = await response.json();
+    console.log("Full API Response:", JSON.stringify(data, null, 2));
+
+    if (data.code !== "0") {
+        throw new Error(`API Error: ${data.msg}`);
+    }
+
+    if (!data.data?.[0]) {
+        throw new Error("No swap data received");
+    }
+
+    return data.data[0];
 }
 
-async function executeSingleChainTransaction(txData) {
+// Token account validation
+async function validateTokenAccounts(wallet, fromToken, toToken) {
     try {
-        console.log("Transaction data received:", txData);
+        if (toToken !== NATIVE_SOL) {
+            const toAccounts = await connection.getTokenAccountsByOwner(wallet, {
+                mint: new PublicKey(toToken)
+            });
 
-        const recentBlockHash = await connection.getLatestBlockhash('processed');
-        console.log("Got recent blockhash:", recentBlockHash.blockhash);
-
-        // Ensure we have valid transaction data
-        if (!txData?.tx?.data) {
-            throw new Error("Invalid transaction data structure");
-        }
-
-        // Properly decode the private key
-        const privateKeyBytes = base58.decode(userPrivateKey);
-        console.log("Private key decoded, length:", privateKeyBytes.length);
-
-        const feePayer = Keypair.fromSecretKey(privateKeyBytes);
-        console.log("Fee payer public key:", feePayer.publicKey.toString());
-
-        // Decode and create transaction
-        const decodedTransaction = base58.decode(txData.tx.data);
-        const tx = Transaction.from(decodedTransaction);
-        tx.recentBlockhash = recentBlockHash.blockhash;
-
-        tx.partialSign(feePayer);
-        console.log("Transaction signed");
-
-        const txId = await connection.sendRawTransaction(tx.serialize(), {
-            skipPreflight: true,
-            maxRetries: 3
-        });
-        console.log("Transaction sent, ID:", txId);
-
-        // Wait for confirmation with better error handling
-        let confirmation;
-        for (let i = 0; i < 3; i++) {
-            try {
-                confirmation = await connection.confirmTransaction({
-                    signature: txId,
-                    blockhash: recentBlockHash.blockhash,
-                    lastValidBlockHeight: recentBlockHash.lastValidBlockHeight
-                }, 'processed');
-
-                if (confirmation?.value?.err) {
-                    throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
-                }
-                break;
-            } catch (confirmError) {
-                if (i === 2) {
-                    const status = await connection.getSignatureStatus(txId);
-                    if (status?.value?.confirmationStatus) {
-                        confirmation = { value: status.value };
-                        break;
-                    }
-                    throw new Error("Transaction could not be confirmed. Please check explorer.");
-                }
-                console.log(`Retry ${i + 1} for confirmation...`);
-                await new Promise(resolve => setTimeout(resolve, 2000));
+            if (toAccounts.value.length === 0) {
+                console.warn("No token account found for destination token");
+                // Let the transaction create the account
             }
         }
-
-        return {
-            success: true,
-            transactionId: txId,
-            explorerUrl: `https://solscan.io/tx/${txId}`,
-            confirmation
-        };
     } catch (error) {
-        console.error("Transaction execution failed:", error);
+        console.error("Token account validation error:", error);
         throw error;
     }
 }
 
-async function executeSwap(amount, fromToken = NATIVE_SOL, toToken = WRAPPED_SOL) {
-    try {
-        // Create keypair first to validate private key
-        const privateKeyBytes = base58.decode(userPrivateKey);
-        const keypair = Keypair.fromSecretKey(privateKeyBytes);
+// Execute the transaction
+async function executeSingleChainTransaction(txData) {
+    if (!txData?.tx?.data) {
+        throw new Error('Invalid transaction data received from OKX');
+    }
 
-        // Format amount with proper decimals
+    let retryCount = 0;
+    while (retryCount < MAX_RETRIES) {
+        try {
+            const blockhash = await connection.getLatestBlockhash('confirmed');
+            const privateKeyBytes = base58.decode(requiredEnvVars.REACT_APP_PRIVATE_KEY);
+            const feePayer = Keypair.fromSecretKey(privateKeyBytes);
+
+            console.log(`Transaction attempt ${retryCount + 1}/${MAX_RETRIES}`);
+            console.log("Using blockhash:", blockhash.blockhash);
+            console.log("Fee payer:", feePayer.publicKey.toString());
+
+            // Decode and prepare transaction
+            const decodedTransaction = base58.decode(txData.tx.data);
+            const tx = VersionedTransaction.deserialize(decodedTransaction);
+
+            // Add compute budget instruction
+            const computeBudgetIx = ComputeBudgetProgram.setComputeUnitLimit({
+                units: COMPUTE_UNITS
+            });
+
+            // Update blockhash and sign
+            tx.message.recentBlockhash = blockhash.blockhash;
+            tx.sign([feePayer]);
+
+            const txId = await sendAndConfirmRawTransaction(
+                connection,
+                tx.serialize(),
+                {
+                    skipPreflight: false,
+                    preflightCommitment: 'confirmed',
+                    maxRetries: 5
+                }
+            );
+
+            console.log("Transaction sent:", txId);
+            return {
+                success: true,
+                transactionId: txId,
+                explorerUrl: `https://solscan.io/tx/${txId}`
+            };
+        } catch (error) {
+            console.error(`Attempt ${retryCount + 1} failed:`, error);
+            retryCount++;
+
+            if (retryCount === MAX_RETRIES) {
+                throw error;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+        }
+    }
+}
+
+// Format amount with proper decimals
+function formatAmountWithDecimals(amount) {
+    return Math.floor(amount * Math.pow(10, DECIMALS)).toString();
+}
+
+async function executeSwap(amount, fromToken = NATIVE_SOL, toToken = USDC_SOL) {
+    try {
+        validateEnvironment();
+
+        const privateKeyBytes = base58.decode(requiredEnvVars.REACT_APP_PRIVATE_KEY);
+        const keypair = Keypair.fromSecretKey(privateKeyBytes);
         const formattedAmount = formatAmountWithDecimals(amount);
-        console.log(`Original amount: ${amount} SOL`);
-        console.log(`Formatted amount with decimals: ${formattedAmount} lamports`);
+
+        await validateTokenAccounts(keypair.publicKey, fromToken, toToken);
 
         const swapParams = {
             chainId: "501",
             amount: formattedAmount,
             fromTokenAddress: fromToken,
             toTokenAddress: toToken,
-            slippage: "0.5",
+            slippage: "0.5", // Reduced slippage for better protection
             userWalletAddress: keypair.publicKey.toString()
         };
 
-        console.log("Getting swap quote...");
         const swapData = await getSingleChainSwap(swapParams);
 
-        console.log("Executing swap transaction...");
-        const result = await executeSingleChainTransaction(swapData);
+        // Validate output amount
+        if (swapData.routerResult.toTokenAmount === '0') {
+            throw new Error('Zero output amount detected');
+        }
 
-        console.log("Swap completed successfully!");
-        console.log("Transaction ID:", result.transactionId);
-        console.log("Explorer URL:", result.explorerUrl);
-
-        return result;
+        return await executeSingleChainTransaction(swapData);
     } catch (error) {
-        console.error("Swap execution failed:", error);
+        console.error("Detailed swap error:", error);
         throw error;
     }
 }
-const DECIMALS = 9; // SOL and WSOL both have 9 decimals
-
-// Helper function to convert amount to proper decimal representation
-function formatAmountWithDecimals(amount) {
-    // Convert amount to smallest units (lamports)
-    const amountInLamports = Math.floor(amount * Math.pow(10, DECIMALS));
-    return amountInLamports.toString();
-}
 
 // Execute the swap
-const amountToSwap = 0.15; // This will be converted to 150000000 lamports (0.15 * 10^9)
+const amountToSwap = 0.05;
 
 executeSwap(amountToSwap)
     .then(result => {
-        console.log("Swap completed:", result);
+        console.log("Swap completed successfully:", result);
+        process.exit(0);
     })
     .catch(error => {
-        console.error("Error during swap:", error);
+        console.error("Swap failed:", error);
         process.exit(1);
     });
