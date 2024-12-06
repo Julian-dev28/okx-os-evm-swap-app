@@ -61,17 +61,17 @@ const CrossChainSwapTransaction = () => {
             console.log("Amount in lamports:", lamports);
 
             // Get quote first
-            const quote = await getCrossChainQuote({
-                fromChainId: SOLANA_CHAIN_ID,
-                toChainId: "137",
-                fromTokenAddress: NATIVE_SOL,
-                toTokenAddress: ETH,
-                amount: lamports,
-                slippage: "0.05",
-                userWalletAddress: userAddress,
-                recieveAddress: "0x9163756d2a83a334de2cc0c3aa1df9a5fc21369d",
-                priceImpactProtectionPercentage: "1",
-            });
+            // const quote = await getCrossChainQuote({
+            //     fromChainId: SOLANA_CHAIN_ID,
+            //     toChainId: "137",
+            //     fromTokenAddress: NATIVE_SOL,
+            //     toTokenAddress: ETH,
+            //     amount: lamports,
+            //     slippage: "0.05",
+            //     userWalletAddress: userAddress,
+            //     recieveAddress: "0x9163756d2a83a334de2cc0c3aa1df9a5fc21369d",
+            //     priceImpactProtectionPercentage: "1",
+            // });
 
             const swapResult = await sendCrossChainSwap(lamports, userAddress);
             setResult(swapResult);

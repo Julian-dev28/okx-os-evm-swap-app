@@ -214,7 +214,7 @@ async function executeSwap(amount, fromToken = NATIVE_SOL, toToken = USDC_SOL) {
 }
 
 // Execute the swap
-const amountToSwap = 0.05;
+const amountToSwap = 0.005;
 
 executeSwap(amountToSwap)
     .then(result => {

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
     getCrossChainQuote,
     userAddress,
+    userEthAddress,
     NATIVE_SOL,
     ETH,
 } from "../utils/dexUtils";
@@ -50,7 +51,6 @@ const CrossChainQuote = () => {
                 toTokenAddress,
                 amount: amount,
                 slippage: "0.01",
-                userWalletAddress: userAddress,
                 priceImpactProtectionPercentage: "1",
                 sort: "0",
             };
